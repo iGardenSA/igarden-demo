@@ -12,7 +12,6 @@
 - سيناريوهات تحكم ذكية (Scenario Engine)
 - نظام تنبيهات متقدم (Alerts System)
 - إدارة الجرعات والمحابس الذكية
-- تكامل مع الهوية الزراعية
 
 ## التقنية
 
@@ -20,11 +19,6 @@
 - Tajawal + JetBrains Mono fonts
 - RTL interface
 - Mock data للعرض والتجربة
-
-## ملاحظة
-
-هذا ديمو تفاعلي يعرض قدرات iGarden Smart OS.
-النظام الحقيقي يعمل على Raspberry Pi 5 مع حسّاسات حقيقية + AI + IoT.
 
 ---
 
