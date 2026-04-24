@@ -5,47 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>iGarden Control System | لوحة التحكم الذكية</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;600&family=Poppins:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root {
-    --bg-primary:     #FAFAF7;
-    --bg-surface:     #FFFFFF;
-    --bg-surface-alt: #F5F7F4;
-    --bg-sidebar:     #F0F4EC;
+    /* Brand Identity */
+    --brand-primary: #00d4a8;
+    --brand-secondary: #0891b2;
+    --brand-accent: #f59e0b;
+    --brand-deep: #042f2e;
 
-    --text-primary:   #1A1A1A;
-    --text-secondary: #4A5568;
-    --text-muted:     #6B7280;
-    --text-inverse:   #FFFFFF;
+    /* Surface */
+    --bg-base: #0a1014;
+    --bg-elevated: #111820;
+    --bg-card: #161e28;
+    --bg-card-hover: #1c2530;
+    --bg-input: #0d141b;
 
-    --brand-primary:  #0F3D2E;
-    --brand-dark:     #0A2F24;
-    --brand-light:    #1B5E3F;
+    /* Borders */
+    --border: #1f2a37;
+    --border-bright: #2a3b4d;
+    --border-accent: #00d4a833;
 
-    --accent-primary: #7CB342;
-    --accent-light:   #A5D63F;
-    --accent-bg:      #F0F7E6;
+    /* Text */
+    --text-primary: #e8eef5;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-dim: #475569;
 
-    --border-light:   #E5E7EB;
-    --border-medium:  #D1D5DB;
+    /* Status */
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --err: #ef4444;
+    --info: #3b82f6;
 
-    --success:        #10B981;
-    --success-bg:     #D1FAE5;
-    --warning:        #F59E0B;
-    --warning-bg:     #FEF3C7;
-    --danger:         #EF4444;
-    --danger-bg:      #FEE2E2;
-    --info:           #3B82F6;
-    --info-bg:        #DBEAFE;
-
-    /* aliases for inline-style compatibility */
-    --ok:   #10B981;
-    --warn: #F59E0B;
-    --err:  #EF4444;
-
-    --shadow-sm: 0 1px 3px rgba(15,61,46,0.06), 0 1px 2px rgba(15,61,46,0.04);
-    --shadow-md: 0 4px 12px rgba(15,61,46,0.08);
-    --shadow-lg: 0 12px 32px rgba(15,61,46,0.14);
+    /* Effects */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+    --glow-primary: 0 0 20px rgba(0,212,168,0.3);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -53,7 +50,7 @@
 
   body {
     font-family: 'Tajawal', sans-serif;
-    background: var(--bg-primary);
+    background: var(--bg-base);
     color: var(--text-primary);
     font-size: 14px;
     line-height: 1.5;
@@ -75,8 +72,8 @@
   /* ===== SIDEBAR ===== */
   .sidebar {
     grid-area: sidebar;
-    background: var(--bg-sidebar);
-    border-left: 1px solid var(--border-light);
+    background: linear-gradient(180deg, #0d1419 0%, #08110f 100%);
+    border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -84,7 +81,7 @@
 
   .brand {
     padding: 20px 18px;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -92,34 +89,30 @@
   .brand-logo {
     width: 42px; height: 42px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--brand-primary), var(--brand-light));
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
     display: grid; place-items: center;
     font-size: 22px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--glow-primary);
     flex-shrink: 0;
   }
   .brand-text { line-height: 1.2; }
   .brand-name {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
     letter-spacing: -0.3px;
-    color: var(--brand-primary);
+    background: linear-gradient(90deg, #fff, var(--brand-primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
-  .brand-tag {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 500;
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-    margin-top: 2px;
-  }
+  .brand-tag { font-size: 10px; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
 
   .nav { padding: 14px 10px; flex: 1; }
   .nav-section { margin-bottom: 18px; }
   .nav-label {
     font-size: 10px;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 1.2px;
     padding: 0 12px 6px;
@@ -131,7 +124,7 @@
     gap: 11px;
     padding: 10px 12px;
     border-radius: 8px;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 13.5px;
     font-weight: 500;
@@ -139,17 +132,17 @@
     border-right: 2px solid transparent;
     margin-bottom: 1px;
   }
-  .nav-item:hover { background: rgba(15,61,46,0.08); }
+  .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
   .nav-item.active {
-    background: var(--brand-primary);
-    color: var(--text-inverse);
-    border-right-color: var(--accent-primary);
+    background: linear-gradient(90deg, transparent, rgba(0,212,168,0.1));
+    color: var(--brand-primary);
+    border-right-color: var(--brand-primary);
   }
   .nav-icon { font-size: 16px; width: 20px; text-align: center; }
   .nav-badge {
     margin-right: auto;
-    background: var(--accent-primary);
-    color: var(--text-inverse);
+    background: var(--brand-primary);
+    color: #042f2e;
     font-size: 10px;
     font-weight: 800;
     padding: 1px 7px;
@@ -157,14 +150,14 @@
     min-width: 20px;
     text-align: center;
   }
-  .nav-badge.warn { background: var(--warning); color: #fff; }
-  .nav-badge.err { background: var(--danger); color: #fff; }
+  .nav-badge.warn { background: var(--warn); color: #000; }
+  .nav-badge.err { background: var(--err); color: #fff; }
 
   /* ===== TOPBAR ===== */
   .topbar {
     grid-area: topbar;
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     padding: 0 24px;
@@ -179,18 +172,18 @@
   .topbar-stat {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 12px;
-    background: var(--bg-surface-alt);
+    background: var(--bg-card);
     border-radius: 6px;
     font-size: 12px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border);
   }
   .topbar-stat-dot {
     width: 8px; height: 8px; border-radius: 50%;
-    background: var(--success);
+    background: var(--ok);
     box-shadow: 0 0 8px currentColor;
     animation: pulse 2s infinite;
   }
-  .topbar-stat-dot.warn { background: var(--warning); }
+  .topbar-stat-dot.warn { background: var(--warn); }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
@@ -200,17 +193,17 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     color: var(--brand-primary);
-    background: var(--bg-surface-alt);
+    background: var(--bg-card);
     padding: 6px 12px;
     border-radius: 6px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border);
     letter-spacing: 0.5px;
   }
 
   .icon-btn {
     width: 36px; height: 36px;
-    background: var(--bg-surface-alt);
-    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text-secondary);
     cursor: pointer;
@@ -219,14 +212,14 @@
     position: relative;
     transition: all 0.15s;
   }
-  .icon-btn:hover { background: var(--bg-primary); color: var(--text-primary); border-color: var(--border-medium); }
+  .icon-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: var(--border-bright); }
   .icon-btn-dot {
     position: absolute;
     top: 7px; right: 7px;
     width: 7px; height: 7px;
     border-radius: 50%;
-    background: var(--danger);
-    border: 2px solid var(--bg-surface);
+    background: var(--err);
+    border: 2px solid var(--bg-elevated);
   }
 
   /* ===== MAIN ===== */
@@ -235,34 +228,27 @@
     overflow-y: auto;
     padding: 22px 26px;
     background:
-      radial-gradient(circle at 0% 0%, rgba(124,179,66,0.05), transparent 40%),
-      radial-gradient(circle at 100% 100%, rgba(15,61,46,0.03), transparent 40%),
-      var(--bg-primary);
+      radial-gradient(circle at 0% 0%, rgba(0,212,168,0.04), transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(8,145,178,0.04), transparent 40%),
+      var(--bg-base);
   }
 
   /* ===== STATUS BAR ===== */
   .statusbar {
     grid-area: statusbar;
-    background: var(--bg-sidebar);
-    border-top: 1px solid var(--border-light);
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
     padding: 0 16px;
     gap: 18px;
     font-size: 11px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
   }
   .statusbar-item { display: flex; align-items: center; gap: 6px; }
-  .statusbar-link {
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 10.5px;
-    transition: color 0.15s;
-  }
-  .statusbar-link:hover { color: var(--accent-primary); }
-  .statusbar-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
-  .statusbar-item .dot.warn { background: var(--warning); }
+  .statusbar-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .statusbar-item .dot.warn { background: var(--warn); }
   .statusbar-spacer { flex: 1; }
 
   /* ===== PAGE STRUCTURE ===== */
@@ -283,13 +269,12 @@
   @media(max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
 
   .kpi {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 16px 18px;
     position: relative;
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
   }
   .kpi::before {
     content: '';
@@ -314,7 +299,7 @@
   .kpi-icon {
     width: 32px; height: 32px;
     border-radius: 8px;
-    background: var(--accent-bg);
+    background: rgba(0,212,168,0.1);
     display: grid; place-items: center;
     font-size: 16px;
     color: var(--accent-color, var(--brand-primary));
@@ -340,32 +325,31 @@
     margin-top: 12px;
     font-size: 11px;
   }
-  .kpi-range { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .kpi-range { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
   .kpi-status {
     padding: 2px 8px;
     border-radius: 10px;
     font-weight: 700;
     font-size: 10px;
-    background: var(--success-bg);
-    color: var(--success);
+    background: rgba(16,185,129,0.15);
+    color: var(--ok);
   }
-  .kpi-status.warn { background: var(--warning-bg); color: var(--warning); }
-  .kpi-status.err { background: var(--danger-bg); color: var(--danger); }
+  .kpi-status.warn { background: rgba(245,158,11,0.15); color: var(--warn); }
+  .kpi-status.err { background: rgba(239,68,68,0.15); color: var(--err); }
 
   /* ===== PANELS ===== */
   .panel {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 18px;
-    box-shadow: var(--shadow-sm);
   }
   .panel-header {
     display: flex;
     align-items: center;
     padding: 14px 18px;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
     gap: 10px;
   }
   .panel-title {
@@ -397,18 +381,18 @@
     align-items: center;
     gap: 14px;
     padding: 12px 0;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
   }
   .device-row:last-child { border-bottom: none; padding-bottom: 0; }
   .device-row:first-child { padding-top: 0; }
 
   .device-icon {
     width: 36px; height: 36px;
-    background: var(--bg-surface-alt);
+    background: var(--bg-elevated);
     border-radius: 8px;
     display: grid; place-items: center;
     font-size: 16px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border);
   }
   .device-info { line-height: 1.3; }
   .device-name { font-size: 13.5px; font-weight: 600; }
@@ -419,18 +403,18 @@
     color: var(--text-secondary);
     text-align: center;
     font-family: 'JetBrains Mono', monospace;
-    background: var(--bg-surface-alt);
+    background: var(--bg-elevated);
     padding: 4px 10px;
     border-radius: 6px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border);
   }
 
   /* ===== TOGGLE SWITCH ===== */
   .toggle {
     position: relative;
     width: 44px; height: 24px;
-    background: var(--border-medium);
-    border: 1px solid var(--border-medium);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
@@ -440,13 +424,12 @@
     position: absolute;
     top: 2px; right: 2px;
     width: 18px; height: 18px;
-    background: #FFFFFF;
+    background: var(--text-secondary);
     border-radius: 50%;
     transition: all 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
   }
-  .toggle.on { background: var(--accent-primary); border-color: var(--accent-primary); }
-  .toggle.on::after { right: calc(100% - 20px); background: #FFFFFF; }
+  .toggle.on { background: var(--brand-primary); border-color: var(--brand-primary); }
+  .toggle.on::after { right: calc(100% - 20px); background: #042f2e; }
 
   /* ===== STATUS PILL ===== */
   .pill {
@@ -457,7 +440,7 @@
     font-weight: 700;
     padding: 3px 9px;
     border-radius: 10px;
-    background: var(--border-light);
+    background: rgba(100,116,139,0.15);
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -468,16 +451,18 @@
     border-radius: 50%;
     background: currentColor;
   }
-  .pill.on { background: var(--success-bg); color: var(--success); }
-  .pill.off { background: var(--border-light); color: var(--text-muted); }
-  .pill.warn { background: var(--warning-bg); color: var(--warning); }
+  .pill.on { background: rgba(16,185,129,0.15); color: var(--ok); }
+  .pill.off { background: rgba(100,116,139,0.15); color: var(--text-muted); }
+  .pill.warn { background: rgba(245,158,11,0.15); color: var(--warn); }
 
   /* ===== CHART ===== */
   .chart-canvas {
     width: 100%;
     height: 220px;
-    background: var(--bg-surface-alt);
-    border: 1px solid var(--border-light);
+    background:
+      linear-gradient(180deg, transparent, rgba(0,212,168,0.02)),
+      var(--bg-input);
+    border: 1px solid var(--border);
     border-radius: 8px;
     position: relative;
     overflow: hidden;
@@ -499,7 +484,7 @@
     grid-template-columns: 8px 1fr auto;
     gap: 12px;
     padding: 10px 0;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
     align-items: start;
   }
   .alert-item:last-child { border-bottom: none; }
@@ -508,9 +493,9 @@
     border-radius: 2px;
     background: var(--info);
   }
-  .alert-bar.warn { background: var(--warning); }
-  .alert-bar.err { background: var(--danger); }
-  .alert-bar.ok { background: var(--success); }
+  .alert-bar.warn { background: var(--warn); }
+  .alert-bar.err { background: var(--err); }
+  .alert-bar.ok { background: var(--ok); }
   .alert-text { font-size: 12.5px; line-height: 1.4; }
   .alert-time { font-size: 10.5px; color: var(--text-muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
 
@@ -524,23 +509,22 @@
     font-size: 12.5px;
     font-weight: 600;
     cursor: pointer;
-    border: 1px solid var(--border-light);
-    background: var(--bg-surface-alt);
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
     color: var(--text-primary);
     font-family: inherit;
     transition: all 0.15s;
   }
-  .btn:hover { background: var(--bg-primary); border-color: var(--border-medium); }
+  .btn:hover { background: var(--bg-card-hover); border-color: var(--border-bright); }
   .btn-sm { padding: 5px 10px; font-size: 11.5px; }
   .btn-primary {
     background: var(--brand-primary);
-    color: var(--text-inverse);
+    color: #042f2e;
     border-color: var(--brand-primary);
   }
-  .btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
-  .btn-danger { background: var(--danger); border-color: var(--danger); color: var(--text-inverse); }
-  .btn-ghost { background: transparent; border-color: transparent; }
-  .btn-ghost:hover { background: var(--bg-surface-alt); border-color: var(--border-light); }
+  .btn-primary:hover { background: #00b894; }
+  .btn-danger { background: var(--err); border-color: var(--err); color: #fff; }
+  .btn-ghost { background: transparent; }
 
   /* ===== FORM ===== */
   .form-grid {
@@ -566,8 +550,8 @@
   .input, .select {
     width: 100%;
     padding: 10px 12px;
-    background: var(--bg-surface-alt);
-    border: 1px solid var(--border-light);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
     border-radius: 7px;
     color: var(--text-primary);
     font-size: 13px;
@@ -577,7 +561,7 @@
   .input:focus, .select:focus {
     outline: none;
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px rgba(15,61,46,0.1);
+    box-shadow: 0 0 0 3px rgba(0,212,168,0.1);
   }
   .input.mono { font-family: 'JetBrains Mono', monospace; }
 
@@ -590,8 +574,8 @@
 
   /* ===== SCENARIO BUILDER ===== */
   .scenario-card {
-    background: var(--bg-surface-alt);
-    border: 1px solid var(--border-light);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 10px;
     margin-bottom: 12px;
     overflow: hidden;
@@ -601,8 +585,8 @@
     align-items: center;
     gap: 10px;
     padding: 12px 14px;
-    border-bottom: 1px solid var(--border-light);
-    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
   }
   .scenario-title { font-size: 13.5px; font-weight: 700; flex: 1; }
   .scenario-body { padding: 14px; }
@@ -624,11 +608,11 @@
     padding: 6px 8px;
     border-radius: 5px;
     letter-spacing: 0.5px;
-    background: var(--accent-bg);
+    background: rgba(0,212,168,0.1);
     color: var(--brand-primary);
   }
-  .rule-tag.then { background: var(--warning-bg); color: var(--warning); }
-  .rule-tag.and { background: var(--border-light); color: var(--text-secondary); }
+  .rule-tag.then { background: rgba(245,158,11,0.1); color: var(--warn); }
+  .rule-tag.and { background: rgba(100,116,139,0.15); color: var(--text-secondary); }
 
   /* ===== SETTINGS NAV ===== */
   .settings-layout {
@@ -639,12 +623,11 @@
   @media(max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
 
   .settings-nav {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 8px;
     height: fit-content;
-    box-shadow: var(--shadow-sm);
   }
   .settings-nav-item {
     display: flex;
@@ -659,14 +642,14 @@
     margin-bottom: 1px;
     transition: all 0.15s;
   }
-  .settings-nav-item:hover { background: var(--bg-surface-alt); color: var(--text-primary); }
+  .settings-nav-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
   .settings-nav-item.active {
-    background: var(--accent-bg);
+    background: rgba(0,212,168,0.1);
     color: var(--brand-primary);
   }
 
   /* ===== WIFI LIST ===== */
-  .wifi-list { border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; }
+  .wifi-list { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .wifi-row {
     display: grid;
     grid-template-columns: 24px 1fr auto auto;
@@ -674,12 +657,12 @@
     align-items: center;
     padding: 11px 14px;
     cursor: pointer;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
     transition: background 0.15s;
   }
-  .wifi-row:hover { background: var(--bg-surface-alt); }
+  .wifi-row:hover { background: var(--bg-elevated); }
   .wifi-row:last-child { border-bottom: none; }
-  .wifi-row.connected { background: rgba(15,61,46,0.04); }
+  .wifi-row.connected { background: rgba(0,212,168,0.05); }
   .wifi-name { font-size: 13px; font-weight: 600; }
   .wifi-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
   .wifi-signal {
@@ -697,8 +680,8 @@
   @media(max-width: 800px) { .support-grid { grid-template-columns: 1fr; } }
 
   .support-card {
-    background: linear-gradient(135deg, var(--bg-surface), var(--bg-surface-alt));
-    border: 1px solid var(--border-light);
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 18px;
     display: flex;
@@ -715,7 +698,7 @@
   .support-card-icon {
     width: 48px; height: 48px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--brand-primary), var(--brand-light));
+    background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
     display: grid; place-items: center;
     font-size: 22px;
     flex-shrink: 0;
@@ -729,7 +712,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
     font-size: 13px;
   }
   .info-row:last-child { border-bottom: none; }
@@ -739,14 +722,14 @@
   /* ===== PROGRESS ===== */
   .progress {
     height: 6px;
-    background: var(--bg-surface-alt);
+    background: var(--bg-input);
     border-radius: 3px;
     overflow: hidden;
     margin-top: 6px;
   }
   .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--brand-primary), var(--accent-primary));
+    background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
     border-radius: 3px;
     transition: width 0.3s;
   }
@@ -761,8 +744,8 @@
   @media(max-width: 900px) { .tank-grid { grid-template-columns: repeat(2,1fr); } }
 
   .tank {
-    background: var(--bg-surface-alt);
-    border: 1px solid var(--border-light);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 12px;
     text-align: center;
@@ -772,16 +755,16 @@
     width: 60px;
     height: 80px;
     margin: 0 auto;
-    border: 2px solid var(--border-medium);
+    border: 2px solid var(--border-bright);
     border-radius: 6px;
     position: relative;
     overflow: hidden;
-    background: var(--bg-surface);
+    background: var(--bg-input);
   }
   .tank-fill {
     position: absolute;
     bottom: 0; left: 0; right: 0;
-    background: linear-gradient(180deg, var(--accent-primary), var(--brand-light));
+    background: linear-gradient(180deg, var(--brand-primary), var(--brand-secondary));
     transition: height 0.5s;
   }
   .tank-pct {
@@ -795,14 +778,14 @@
   /* ===== SCROLLBAR ===== */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
   /* ===== MODAL ===== */
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15,61,46,0.3);
+    background: rgba(0,0,0,0.7);
     backdrop-filter: blur(4px);
     display: none;
     align-items: center;
@@ -811,8 +794,8 @@
   }
   .modal-backdrop.show { display: flex; }
   .modal {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-medium);
+    background: var(--bg-card);
+    border: 1px solid var(--border-bright);
     border-radius: 14px;
     width: 90%;
     max-width: 480px;
@@ -821,7 +804,7 @@
   }
   .modal-header {
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
   }
@@ -837,7 +820,7 @@
   .modal-body { padding: 20px; }
   .modal-footer {
     padding: 14px 20px;
-    border-top: 1px solid var(--border-light);
+    border-top: 1px solid var(--border);
     display: flex;
     gap: 10px;
     justify-content: flex-start;
@@ -864,7 +847,7 @@
       <div class="brand-logo">🌱</div>
       <div class="brand-text">
         <div class="brand-name">iGarden</div>
-        <div class="brand-tag">Smart OS</div>
+        <div class="brand-tag">Smart Control</div>
       </div>
     </div>
 
@@ -1556,7 +1539,7 @@
 
     <!-- ===== SCENARIOS ===== -->
     <section class="page" id="page-scenarios">
-      <div style="background:linear-gradient(135deg,var(--accent-bg),var(--bg-surface-alt));border:1px solid var(--border-light);border-radius:12px;padding:16px 18px;margin-bottom:18px;display:flex;gap:14px;align-items:center">
+      <div style="background:linear-gradient(135deg,rgba(0,212,168,0.08),rgba(8,145,178,0.05));border:1px solid var(--border-accent);border-radius:12px;padding:16px 18px;margin-bottom:18px;display:flex;gap:14px;align-items:center">
         <div style="font-size:32px">🧠</div>
         <div style="flex:1">
           <div style="font-weight:700;margin-bottom:3px">محرك السيناريوهات الشرطية</div>
@@ -1811,7 +1794,7 @@
                 <div class="panel-title"><span class="panel-title-icon">🕐</span> ضبط التاريخ والوقت</div>
               </div>
               <div class="panel-body">
-                <div style="background:var(--bg-surface-alt);border:1px solid var(--border-light);border-radius:10px;padding:18px;text-align:center;margin-bottom:18px">
+                <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:18px;text-align:center;margin-bottom:18px">
                   <div style="font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:800;color:var(--brand-primary);letter-spacing:1px" id="bigClock">14:42:38</div>
                   <div style="color:var(--text-secondary);margin-top:6px;font-size:13px" id="bigDate">الإثنين، 20 أبريل 2026 · هـ 1447/10/02</div>
                 </div>
@@ -1859,7 +1842,7 @@
                 <div class="panel-title"><span class="panel-title-icon">🌐</span> المزامنة التلقائية NTP</div>
               </div>
               <div class="panel-body">
-                <div class="device-row" style="border-bottom:1px solid var(--border-light);margin-bottom:14px;padding-bottom:14px">
+                <div class="device-row" style="border-bottom:1px solid var(--border);margin-bottom:14px;padding-bottom:14px">
                   <div class="device-icon">⟳</div>
                   <div class="device-info">
                     <div class="device-name">المزامنة التلقائية مع خوادم الإنترنت</div>
@@ -1913,7 +1896,7 @@
                 <div class="panel-title"><span class="panel-title-icon">📶</span> إعدادات الواي فاي</div>
               </div>
               <div class="panel-body">
-                <div style="background:var(--bg-surface-alt);border:1px solid var(--border-light);border-radius:10px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+                <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
                   <div style="font-size:28px">📶</div>
                   <div style="flex:1">
                     <div style="font-weight:700">متصل بـ <span style="color:var(--brand-primary)">iGarden_Demo_5G</span></div>
@@ -2123,7 +2106,7 @@
                 <div class="panel-title"><span class="panel-title-icon">💾</span> النسخ الاحتياطي والاستعادة</div>
               </div>
               <div class="panel-body">
-                <div style="background:var(--bg-surface-alt);border:1px solid var(--border-light);border-radius:10px;padding:14px;margin-bottom:14px">
+                <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
                   <div style="font-weight:700;margin-bottom:4px">آخر نسخة احتياطية</div>
                   <div style="color:var(--text-muted);font-size:12px;font-family:'JetBrains Mono',monospace">2026-04-19 23:00:00 · 4.2 MB · مخزّنة محلياً + سحابياً</div>
                 </div>
@@ -2185,7 +2168,7 @@
                 <div class="panel-title"><span class="panel-title-icon">⟳</span> التحديثات</div>
               </div>
               <div class="panel-body">
-                <div style="background:linear-gradient(135deg,var(--accent-bg),var(--bg-surface-alt));border:1px solid var(--border-light);border-radius:10px;padding:18px;text-align:center;margin-bottom:14px">
+                <div style="background:linear-gradient(135deg,rgba(0,212,168,0.1),rgba(8,145,178,0.05));border:1px solid var(--border-accent);border-radius:10px;padding:18px;text-align:center;margin-bottom:14px">
                   <div style="font-size:36px;margin-bottom:6px">✓</div>
                   <div style="font-weight:700">النظام محدّث</div>
                   <div style="color:var(--text-muted);font-size:12px;margin-top:4px">إصدار 2.4.1 · آخر فحص قبل 4 ساعات</div>
@@ -2205,14 +2188,14 @@
     <!-- ===== SUPPORT ===== -->
     <section class="page" id="page-support">
       <!-- Brand Hero -->
-      <div style="background:linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-light) 50%, var(--brand-dark) 100%);border:1px solid var(--brand-dark);border-radius:14px;padding:26px;margin-bottom:18px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:-30px;left:-30px;width:200px;height:200px;background:radial-gradient(circle,var(--accent-primary) 0%,transparent 70%);opacity:0.15"></div>
+      <div style="background:linear-gradient(135deg, #042f2e 0%, #064e3b 50%, #022c22 100%);border:1px solid var(--border-bright);border-radius:14px;padding:26px;margin-bottom:18px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-30px;left:-30px;width:200px;height:200px;background:radial-gradient(circle,var(--brand-primary) 0%,transparent 70%);opacity:0.2"></div>
         <div style="position:relative;z-index:1;display:flex;align-items:center;gap:18px">
-          <div style="width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg, var(--accent-primary), var(--accent-light));display:grid;place-items:center;font-size:32px;box-shadow:0 0 20px rgba(124,179,66,0.4)">🌱</div>
+          <div style="width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));display:grid;place-items:center;font-size:32px;box-shadow:var(--glow-primary)">🌱</div>
           <div>
-            <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px;color:#FFFFFF">iGarden</div>
-            <div style="color:rgba(255,255,255,0.75);font-size:13px;margin-top:2px">حلول الزراعة الذكية والأنظمة المؤتمتة</div>
-            <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:6px;font-family:'JetBrains Mono',monospace">v2.4.1 · iGarden Smart Control System · Made in KSA 🇸🇦</div>
+            <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px">iGarden</div>
+            <div style="color:#88ccc4;font-size:13px;margin-top:2px">حلول الزراعة الذكية والأنظمة المؤتمتة</div>
+            <div style="color:#5a8a82;font-size:11px;margin-top:6px;font-family:'JetBrains Mono',monospace">v2.4.1 · iGarden Smart Control System · Made in KSA 🇸🇦</div>
           </div>
         </div>
       </div>
@@ -2286,7 +2269,7 @@
         </div>
       </div>
 
-      <div style="text-align:center;color:var(--text-muted);font-size:11px;margin-top:24px;padding:16px">
+      <div style="text-align:center;color:var(--text-dim);font-size:11px;margin-top:24px;padding:16px">
         © 2026 iGarden Systems · جميع الحقوق محفوظة<br>
         <span style="font-family:'JetBrains Mono',monospace;font-size:10px">Smart Agriculture Solutions for a Sustainable Future</span>
       </div>
@@ -2303,7 +2286,6 @@
     <div class="statusbar-spacer"></div>
     <div class="statusbar-item">v2.4.1</div>
     <div class="statusbar-item">IGRD-2025-PI5-00142</div>
-    <a class="statusbar-link" href="https://igarden.sa" target="_blank">Powered by iGarden.sa ↗</a>
   </footer>
 
 </div>
@@ -2438,11 +2420,11 @@
     let grid = '';
     for (let i = 0; i <= 4; i++) {
       const y = (i / 4) * h;
-      grid += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="3,3"/>`;
+      grid += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="#1f2a37" stroke-width="1" stroke-dasharray="3,3"/>`;
     }
     for (let i = 0; i <= 6; i++) {
       const x = (i / 6) * w;
-      grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="#E5E7EB" stroke-width="1" stroke-dasharray="3,3"/>`;
+      grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="#1f2a37" stroke-width="1" stroke-dasharray="3,3"/>`;
     }
 
     container.innerHTML = `
