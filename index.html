@@ -3,7 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>iGarden Control System | لوحة التحكم الذكية</title>
+<title>iGarden Smart OS — لوحة التحكم الحيّة</title>
+<meta name="description" content="جرّب الآن لوحة تحكم iGarden Smart OS — منظومة AI متكاملة للزراعة الذكية. مراقبة حيّة، سيناريوهات تحكم، تنبيهات ذكية.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/logo.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://demo.igarden.sa">
+<meta property="og:title" content="iGarden Smart OS — لوحة التحكم الحيّة">
+<meta property="og:description" content="منظومة AI متكاملة للزراعة الذكية — جرّبها الآن">
+<meta property="og:image" content="https://demo.igarden.sa/assets/logo.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="iGarden Smart OS">
+<meta name="twitter:description" content="منظومة AI متكاملة للزراعة الذكية">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;600&family=Poppins:wght@400;500;600&display=swap');
 
@@ -82,35 +94,34 @@
     overflow-y: auto;
   }
 
-  .brand {
-    padding: 20px 18px;
+  .brand-header {
+    padding: 20px 16px;
     border-bottom: 1px solid var(--border-light);
+    text-align: center;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
   }
   .brand-logo {
-    width: 42px; height: 42px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--brand-primary), var(--brand-light));
-    display: grid; place-items: center;
-    font-size: 22px;
-    box-shadow: var(--shadow-sm);
-    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
   }
-  .brand-text { line-height: 1.2; }
+  .brand-text { line-height: 1.3; text-align: center; }
   .brand-name {
+    font-family: 'Tajawal', sans-serif;
     font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
+    font-weight: 700;
     color: var(--brand-primary);
   }
   .brand-tag {
     font-family: 'Poppins', sans-serif;
     font-weight: 500;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-muted);
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     margin-top: 2px;
   }
 
@@ -852,6 +863,92 @@
     .menu-toggle { display: grid; }
     .kpi-grid { grid-template-columns: repeat(2,1fr); }
   }
+
+  /* ===== VISUAL ENHANCEMENTS ===== */
+
+  /* KPI cards: subtle gradient + hover lift */
+  .kpi {
+    background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-alt) 100%);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(15,61,46,0.08);
+  }
+
+  /* Glow on large KPI values */
+  .kpi-value {
+    text-shadow: 0 0 20px rgba(124,179,66,0.12);
+  }
+
+  /* Nav active: subtle shadow */
+  .nav-item.active {
+    box-shadow: 0 2px 8px rgba(15,61,46,0.18);
+  }
+
+  /* ===== HERO BANNER (Dashboard only) ===== */
+  .demo-hero-banner {
+    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-dark) 100%);
+    color: var(--text-inverse);
+    padding: 20px 28px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .demo-hero-banner::before {
+    content: '';
+    position: absolute;
+    top: -40px; left: -40px;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(124,179,66,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .banner-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+  .banner-eyebrow {
+    font-family: 'Poppins', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent-light);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .banner-content h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    line-height: 1.2;
+  }
+  .banner-content p {
+    font-size: 13.5px;
+    opacity: 0.85;
+    margin: 0;
+  }
+  .banner-cta {
+    background: var(--accent-primary);
+    color: var(--brand-primary);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13.5px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s, transform 0.2s;
+    flex-shrink: 0;
+    font-family: 'Tajawal', sans-serif;
+  }
+  .banner-cta:hover {
+    background: var(--accent-light);
+    transform: translateX(-2px);
+  }
 </style>
 </head>
 <body>
@@ -860,8 +957,8 @@
 
   <!-- ========== SIDEBAR ========== -->
   <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-logo">🌱</div>
+    <div class="brand-header">
+      <img src="assets/logo.png" alt="iGarden Logo" class="brand-logo">
       <div class="brand-text">
         <div class="brand-name">iGarden</div>
         <div class="brand-tag">Smart OS</div>
@@ -960,6 +1057,18 @@
 
     <!-- ===== DASHBOARD ===== -->
     <section class="page active" id="page-dashboard">
+
+      <div class="demo-hero-banner">
+        <div class="banner-content">
+          <div>
+            <span class="banner-eyebrow">LIVE DEMO</span>
+            <h2>iGarden Smart OS</h2>
+            <p>منظومة AI متكاملة للزراعة الذكية — تفاعل مباشر بالبيانات الحيّة</p>
+          </div>
+          <a href="https://igarden.sa" class="banner-cta" target="_blank">اكتشف iGarden ←</a>
+        </div>
+      </div>
+
       <div class="kpi-grid">
         <div class="kpi" style="--accent-color:#10b981">
           <div class="kpi-header">
