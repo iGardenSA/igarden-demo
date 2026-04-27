@@ -320,10 +320,9 @@ export default function DemoPage() {
       <header style={{ background: `linear-gradient(180deg, ${C.forest} 0%, ${C.forestDark} 100%)`, borderBottom: `3px solid ${C.lime}`, padding: isMobile ? '12px 14px' : '14px 24px', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: isMobile ? 8 : 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, minWidth: 0 }}>
-            <IGardenLogo variant="white" size={isMobile ? 38 : 48} />
+            <IGardenLogo variant="green" size={isMobile ? 38 : 48} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>iGarden <span style={{ color: C.limeLight, fontSize: isMobile ? 13 : 16, fontWeight: 500 }}>Smart OS</span></div>
-              <div style={{ fontSize: isMobile ? 10 : 12, color: C.limeLight, marginTop: 2, fontWeight: 600, letterSpacing: '0.02em' }}>ازرع بذكاء</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.limeLight, fontSize: isMobile ? 11 : 12, background: 'rgba(255,255,255,0.08)', padding: isMobile ? '6px 10px' : '8px 14px', borderRadius: 20, border: `1px solid ${C.lime}40` }}>
