@@ -213,9 +213,6 @@ function IGardenLogo({ variant = 'white', size = 44 }: { variant?: 'white' | 'gr
   );
 }
 
-  );
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // المكوّن الرئيسي
 // ═══════════════════════════════════════════════════════════════════
@@ -235,9 +232,9 @@ export default function DemoPage() {
   // ضمان viewport meta لكل أجهزة الجوال (في حال تشغيله ضمن iframe)
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    let meta = document.querySelector('meta[name="viewport"]');
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
     if (!meta) {
-      meta = document.createElement('meta');
+      meta = document.createElement('meta') as HTMLMetaElement;
       meta.name = 'viewport';
       document.head.appendChild(meta);
     }
@@ -1089,7 +1086,7 @@ function ZonesSettings({ zones, setZones, isMobile }) {
             </Field>
             <Field label="مرحلة النمو">
               <select value={editing.stage} onChange={e => updateZone(editing.id, { stage: e.target.value })} style={inputStyle}>
-                {Object.entries(CROP_DB[editing.crop].stages).map(([k, s]) => <option key={k} value={k}>{s.name} (اليوم {s.days})</option>)}
+                {Object.entries(CROP_DB[editing.crop as keyof typeof CROP_DB].stages).map(([k, s]) => { const st = s as { name: string; days: string }; return <option key={k} value={k}>{st.name} (اليوم {st.days})</option>; })}
               </select>
             </Field>
           </div>
@@ -1164,7 +1161,7 @@ function ZonesSettings({ zones, setZones, isMobile }) {
   );
 }
 
-const inputStyle = { width: '100%', padding: '9px 12px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 14, background: '#fff', boxSizing: 'border-box' };
+const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 12px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 14, background: '#fff', boxSizing: 'border-box' };
 
 // ─── Hook بسيط لاكتشاف الشاشات الصغيرة ───
 function useIsMobile(breakpoint = 640) {
