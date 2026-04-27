@@ -241,7 +241,7 @@ export default function DemoPage() {
     meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0';
   }, []);
 
-  // تحميل من localStorage (مع دعم Claude Artifacts كـ fallback)
+  // تحميل من sessionStorage (مع دعم Claude Artifacts كـ fallback)
   useEffect(() => {
     (async () => {
       try {
@@ -254,10 +254,10 @@ export default function DemoPage() {
           const o = await w.storage.get('overrides');
           if (o?.value) setOverrides(JSON.parse(o.value));
         } else {
-          // Production environment (browser localStorage)
-          const z = localStorage.getItem('igarden_zones');
+          // Production environment (browser sessionStorage — cleared on tab close)
+          const z = sessionStorage.getItem('igarden_zones');
           if (z) setZones(JSON.parse(z));
-          const o = localStorage.getItem('igarden_overrides');
+          const o = sessionStorage.getItem('igarden_overrides');
           if (o) setOverrides(JSON.parse(o));
         }
       } catch (e) { /* key not found or invalid JSON */ }
@@ -276,8 +276,8 @@ export default function DemoPage() {
           await w.storage.set('zones', JSON.stringify(zones));
           await w.storage.set('overrides', JSON.stringify(overrides));
         } else {
-          localStorage.setItem('igarden_zones', JSON.stringify(zones));
-          localStorage.setItem('igarden_overrides', JSON.stringify(overrides));
+          sessionStorage.setItem('igarden_zones', JSON.stringify(zones));
+          sessionStorage.setItem('igarden_overrides', JSON.stringify(overrides));
         }
       } catch (e) { /* ignore quota errors */ }
     })();
