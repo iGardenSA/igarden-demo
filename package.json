@@ -1,0 +1,30 @@
+{
+  "name": "demo-igarden",
+  "version": "1.0.0",
+  "private": true,
+  "description": "iGarden Smart OS — Demo Seed (demo.igarden.sa)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.1.6"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

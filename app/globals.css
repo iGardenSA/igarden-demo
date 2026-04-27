@@ -1,0 +1,52 @@
+/* ═══════════════════════════════════════════════════════════════════
+   iGarden Smart OS Demo — Global Styles
+   Reset أساسي + إعدادات Tajawal + RTL
+   ═══════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Tajawal', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #FAFAF7;
+  color: #1F2937;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button {
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+/* تحسين شريط التمرير الأفقي للتبويبات على الجوال */
+nav div::-webkit-scrollbar {
+  display: none;
+}
+
+/* تحسين focus للوصولية */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #7CB342;
+  outline-offset: 2px;
+}
+
+/* منع flash of unstyled content للخط العربي */
+@font-face {
+  font-family: 'Tajawal';
+  font-display: swap;
+}
