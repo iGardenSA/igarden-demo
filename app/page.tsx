@@ -333,28 +333,6 @@ export default function DemoPage() {
         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }`}</style>
       </header>
 
-      {/* ═══ Tabs ═══ */}
-      <nav style={{ background: '#fff', borderBottom: `1px solid ${C.border}`, padding: isMobile ? '0 14px' : '0 24px', position: 'sticky', top: isMobile ? 64 : 76, zIndex: 40 }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
-          <style>{`nav div::-webkit-scrollbar { display: none; }`}</style>
-          {tabs.map(t => {
-            const Icon = t.icon;
-            const active = activeTab === t.id;
-            return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                background: 'none', border: 'none', padding: isMobile ? '12px 14px' : '14px 20px', cursor: 'pointer',
-                color: active ? C.forest : C.inkSoft, fontWeight: active ? 700 : 500, fontSize: isMobile ? 13 : 14,
-                borderBottom: active ? `3px solid ${C.lime}` : '3px solid transparent', marginBottom: -1,
-                display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 8, whiteSpace: 'nowrap', fontFamily: 'inherit', transition: 'all .15s', flexShrink: 0,
-              }}>
-                <Icon size={isMobile ? 14 : 16} />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-
       {/* ═══ المحتوى ═══ */}
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? 14 : 24 }}>
         {activeTab === 'live' && <LiveDashboard isMobile={isMobile} zones={zones} setZones={setZones} selectedZoneId={selectedZoneId} setSelectedZoneId={setSelectedZoneId} liveReadings={liveReadings} overrides={overrides} setOverrides={setOverrides} />}
