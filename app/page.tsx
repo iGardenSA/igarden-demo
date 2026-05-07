@@ -1304,6 +1304,34 @@ const GAP_TIMELINE_STEPS = [
   { emoji: '📦', title: 'الحصاد والتعبئة',  subtitle: 'متوقع',    date: '2026-06-10', status: 'upcoming', detail: 'QR auto-bind لفاتورة ZATCA Fatoora عند التعبئة' },
 ];
 
+// ─── بيانات Sprint 2: أحداث التدقيق التفصيلية ───
+const ENHANCED_AUDIT_EVENTS = [
+  { id: 'AUD-2026-0001', ts: '2026-05-07 10:42', zone: 'المحمية A', actor: 'System',   action: 'دورة ري مشغَّلة',           before: 'رطوبة 38%',       after: 'رطوبة 44%',         reason: 'أقل من الحد المستهدف 40%',        status: 'Locked' },
+  { id: 'AUD-2026-0002', ts: '2026-05-07 11:10', zone: 'المحمية B', actor: 'Operator', action: 'ضبط مستهدف pH',              before: 'pH 6.2',           after: 'pH 6.0',             reason: 'تغيير مرحلة المحصول إلى الإزهار', status: 'Locked' },
+  { id: 'AUD-2026-0003', ts: '2026-05-07 12:05', zone: 'المحمية C', actor: 'System',   action: 'جرعة سماد مكتملة',          before: 'EC 1.4 mS/cm',    after: 'EC 1.8 mS/cm',      reason: 'EC مستهدف لمرحلة النمو الحالية',  status: 'Locked' },
+  { id: 'AUD-2026-0004', ts: '2026-05-06 14:30', zone: 'المحمية A', actor: 'Operator', action: 'تعديل يدوي — EC',            before: 'EC 2.4 mS/cm',    after: 'EC 2.1 mS/cm',      reason: 'طلب مشغّل بعد ملاحظة ميدانية',   status: 'Locked' },
+  { id: 'AUD-2026-0005', ts: '2026-05-06 03:15', zone: 'المحمية B', actor: 'System',   action: 'تفعيل ضباب — رطوبة منخفضة', before: 'رطوبة 52%',       after: 'رطوبة 61%',         reason: 'أقل من الحد الأدنى 55%',          status: 'Locked' },
+  { id: 'AUD-2026-0006', ts: '2026-05-05 09:00', zone: 'المحمية A', actor: 'System',   action: 'مراجعة حساس pH',             before: 'قراءة 6.8 (مشكوك)', after: 'مُعاير — 6.3',    reason: 'انحراف قراءة عن متوسط 3 أيام',   status: 'Locked' },
+  { id: 'AUD-2026-0007', ts: '2026-05-04 16:20', zone: 'المحمية C', actor: 'Operator', action: 'فحص صيانة دورية',            before: 'مضخة تعمل',       after: 'مضخة تعمل — موثّق', reason: 'صيانة أسبوعية مجدولة',          status: 'Locked' },
+  { id: 'AUD-2026-0008', ts: '2026-05-03 08:30', zone: 'المحمية B', actor: 'System',   action: 'إشعار pH خارج النطاق',       before: 'pH 7.6',           after: 'pH 7.1 (بعد تعديل)', reason: 'تجاوز الحد الأعلى المسموح 7.5', status: 'Locked' },
+].map(e => ({ ...e, hash: mockSHA(e.id) }));
+
+// ─── بيانات Sprint 2: الدفعات ───
+const BATCH_DATA = [
+  {
+    batchId: 'BATCH-TOM-2026-001', crop: '🍅 طماطم', zone: 'المحمية A — جدة',
+    planting: '2026-04-12', harvest: '2026-06-20', water: 'خزان ري مفلتر',
+    inputs: '12 سجل', sensor: 'pH مستقر · EC ضمن المستهدف', invoice: 'غير مرتبط — ديمو',
+    status: 'growing', statusLabel: '🌱 نامٍ', statusColor: C.ok,
+  },
+  {
+    batchId: 'BATCH-LET-2026-002', crop: '🥬 خس', zone: 'المحمية B — الرياض',
+    planting: '2026-04-25', harvest: '2026-05-30', water: 'خزان ري مفلتر',
+    inputs: '8 سجلات', sensor: 'قراءات مستقرة · لا تنبيهات حرجة', invoice: 'غير مرتبط — ديمو',
+    status: 'ready', statusLabel: '✅ جاهز قريباً', statusColor: '#2563EB',
+  },
+];
+
 function ComplianceTab({ isMobile, historicalData, zones }) {
   const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits'>('scores');
   const [reportModal, setReportModal] = useState<string | null>(null);
@@ -1315,7 +1343,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
     { id: 'scores',       label: '🏆 درجة الامتثال',  icon: ShieldCheck },
     { id: 'reports',      label: '📄 مكتبة التقارير',  icon: FileText    },
     { id: 'audit',        label: '🕐 سجل المراجعة',    icon: Clock       },
-    { id: 'traceability', label: '🔗 تتبع الدفعة',     icon: Leaf        },
+    { id: 'traceability', label: '🔗 تتبع الدفعات',    icon: Leaf        },
     { id: 'limits',       label: '🏛️ حدود النظام',    icon: ShieldCheck },
   ];
 
@@ -1335,15 +1363,15 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
   }), [allAudit, auditZone, auditType, cutoff]);
 
   const downloadAuditCSV = () => {
-    const headers = ['الوقت', 'المنطقة', 'النوع', 'القيمة', 'المشغّل', 'الختم'];
-    const rows = filteredAudit.map(e =>
-      [e.timestamp, e.zone, e.type, e.value, e.operator, e.sha].join(',')
+    const headers = ['Event ID', 'الوقت', 'المنطقة', 'المشغّل', 'الإجراء', 'قبل', 'بعد', 'السبب', 'Hash', 'الحالة'];
+    const rows = ENHANCED_AUDIT_EVENTS.map(e =>
+      [e.id, e.ts, e.zone, e.actor, e.action, e.before, e.after, e.reason, e.hash, e.status].map(v => `"${v}"`).join(',')
     );
     const csv  = [headers.join(','), ...rows].join('\n');
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `igarden-audit-trail-${auditPeriod}.csv`;
+    link.download = `igarden-audit-events-${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
   };
 
@@ -1398,7 +1426,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
           downloadAuditCSV={downloadAuditCSV}
         />
       )}
-      {section === 'traceability' && <GAPTraceability    isMobile={isMobile} />}
+      {section === 'traceability' && <BatchTraceabilitySection isMobile={isMobile} />}
       {section === 'limits'       && <SystemLimitsSection isMobile={isMobile} />}
 
       {/* Disclaimer */}
@@ -1495,8 +1523,50 @@ function ComplianceScores({ isMobile, historicalData }) {
 
 // ─── Section 2: مكتبة التقارير ───
 function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
+  const downloadGAPCSV = () => {
+    const rows = [
+      ['Batch ID', 'Crop', 'Zone', 'Planting', 'Harvest', 'Water Source', 'Inputs', 'Sensor Summary', 'Invoice', 'Status'],
+      ...BATCH_DATA.map(b => [b.batchId, b.crop.replace(/[^\w\s-]/g,'').trim(), b.zone, b.planting, b.harvest, b.water, b.inputs, b.sensor, b.invoice, b.statusLabel.replace(/[^\w\s-]/g,'').trim()]),
+    ];
+    const csv  = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob); link.download = 'igarden-batches.csv'; link.click();
+  };
+  const downloadAuditCSVDirect = () => {
+    const rows = [
+      ['Event ID','Timestamp','Zone','Actor','Action','Before','After','Reason','Hash','Status'],
+      ...ENHANCED_AUDIT_EVENTS.map(e => [e.id,e.ts,e.zone,e.actor,e.action,e.before,e.after,e.reason,e.hash,e.status]),
+    ];
+    const csv  = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob); link.download = 'igarden-audit-trail.csv'; link.click();
+  };
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(270px, 1fr))', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+      {/* Quick Exports */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: C.forest, marginBottom: 4 }}>تصدير سريع</div>
+        <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>هذه التقارير تجريبية لعرض طريقة تنظيم البيانات. لا تُعد مستندات رسمية قبل مراجعتها من جهة مختصة.</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {[
+            { label: '📊 تقرير شهري PDF',          action: () => { setReportModal('mewa-monthly');    setTimeout(() => window.print(), 400); }, color: '#0F3D2E' },
+            { label: '📋 ملف جاهزية Saudi GAP PDF', action: () => { setReportModal('saudi-gap');       setTimeout(() => window.print(), 400); }, color: '#7CB342' },
+            { label: '📦 تقرير تتبع الدفعات CSV',  action: downloadGAPCSV,                                                                      color: '#2563EB' },
+            { label: '🕐 سجل التدقيق CSV',         action: downloadAuditCSVDirect,                                                               color: '#6B7280' },
+          ].map(({ label, action, color }) => (
+            <button key={label} onClick={action} style={{ padding: '9px 16px', background: color, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Report Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(270px, 1fr))', gap: 16 }}>
       {REPORT_DEFS.map(report => (
         <div key={report.id} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ height: 5, background: report.accentColor }} />
@@ -1538,6 +1608,7 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }
@@ -2099,11 +2170,65 @@ function SystemLimitsSection({ isMobile }) {
 // ─── Section 3: Audit Trail ───
 function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAuditZone, auditType, setAuditType, auditPeriod, setAuditPeriod, downloadAuditCSV }) {
   const sel: React.CSSProperties = { padding: '8px 10px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 12, background: '#fff', cursor: 'pointer' };
+  const thS: React.CSSProperties = { padding: '9px 11px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, borderBottom: `2px solid ${C.border}`, background: C.creamDark, whiteSpace: 'nowrap' as const, fontSize: 11 };
+  const tdS: React.CSSProperties = { padding: '7px 11px', borderBottom: `1px solid ${C.border}`, fontSize: 11, verticalAlign: 'middle' as const };
+
   return (
-    <div>
-      {/* Filters */}
-      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Detailed Events Table */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, color: C.forest, fontSize: 14 }}>أحداث التشغيل التفصيلية</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Detailed Operational Events — Audit-ready structure</div>
+          </div>
+          <button onClick={downloadAuditCSV} style={{ padding: '7px 14px', background: C.forest, color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={13} /> تصدير CSV
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 780 }}>
+            <thead>
+              <tr>
+                {['Event ID', 'الوقت', 'المنطقة', 'المشغّل', 'الإجراء', 'قبل', 'بعد', 'السبب', 'Hash', 'الحالة'].map(h => (
+                  <th key={h} style={thS}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ENHANCED_AUDIT_EVENTS.map((e, i) => (
+                <tr key={e.id} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: C.inkSoft, whiteSpace: 'nowrap' }}>{e.id}</td>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, whiteSpace: 'nowrap' }}>{e.ts}</td>
+                  <td style={{ ...tdS, fontWeight: 600, color: C.forest, whiteSpace: 'nowrap' }}>{e.zone}</td>
+                  <td style={{ ...tdS, whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, background: e.actor === 'System' ? '#EFF6FF' : '#FFFBEB', color: e.actor === 'System' ? '#1D4ED8' : '#92400E' }}>
+                      {e.actor === 'System' ? '🤖' : '✋'} {e.actor}
+                    </span>
+                  </td>
+                  <td style={{ ...tdS, color: C.ink, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.action}</td>
+                  <td style={{ ...tdS, color: C.danger, fontSize: 10, whiteSpace: 'nowrap' }}>{e.before}</td>
+                  <td style={{ ...tdS, color: C.ok,     fontSize: 10, whiteSpace: 'nowrap' }}>{e.after}</td>
+                  <td style={{ ...tdS, color: C.inkSoft, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.reason}</td>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>{e.hash}</td>
+                  <td style={{ ...tdS, whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, background: '#F0FDF4', color: C.ok, border: '1px solid #BBF7D0' }}>🔒 {e.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: '10px 16px', background: '#F8FDF9', borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.inkSoft, lineHeight: 1.6 }}>
+          💡 كل تعديل يدوي أو آلي يُسجل في سجل التدقيق. لا يتم حذف الأحداث، بل يُضاف حدث تصحيحي عند الحاجة. | Audit-ready structure · Locked in demo
+        </div>
+      </div>
+
+      {/* Readings Filter + Table */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontWeight: 800, color: C.forest, fontSize: 14, marginBottom: 12 }}>سجل قراءات الحساسات المفلتر</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 14 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, marginBottom: 4 }}>المنطقة</div>
             <select value={auditZone} onChange={e => setAuditZone(e.target.value)} style={sel}>
@@ -2128,44 +2253,34 @@ function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAudit
               <option value="30d">آخر 30 يوم</option>
             </select>
           </div>
-          <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end' }}>
-            <button onClick={downloadAuditCSV} style={{ padding: '8px 14px', background: C.forest, color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Download size={13} /> تصدير CSV
-            </button>
+          <div style={{ marginRight: 'auto' }}>
+            <Badge color={C.lime} text={`${filteredAudit.length} سجل`} />
           </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 700, color: C.forest, fontSize: 14 }}>سجل المراجعة والأحداث</div>
-          <Badge color={C.lime} text={`${filteredAudit.length} سجل`} />
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? 10 : 12 }}>
             <thead>
               <tr style={{ background: C.creamDark }}>
                 {['الوقت (UTC)', 'المنطقة', 'النوع', 'القيمة', 'المشغّل', 'الختم'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: C.forest, borderBottom: `2px solid ${C.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '9px 11px', textAlign: 'right', fontWeight: 700, color: C.forest, borderBottom: `2px solid ${C.border}`, whiteSpace: 'nowrap', fontSize: 11 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filteredAudit.slice(0, 50).map((entry: AuditEntry, i: number) => {
+              {filteredAudit.slice(0, 40).map((entry: AuditEntry, i: number) => {
                 const tc = entry.type === 'تجاوز يدوي' ? '#F59E0B' : entry.type === 'تدخل تلقائي' ? '#0EA5E9' : C.muted;
                 return (
-                  <tr key={entry.id} style={{ background: i % 2 === 0 ? '#fff' : C.cream, borderBottom: `1px solid ${C.border}` }}>
-                    <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontSize: 10, color: C.inkSoft, whiteSpace: 'nowrap' }}>{entry.timestamp.slice(0, 16).replace('T', ' ')}</td>
-                    <td style={{ padding: '7px 12px', fontWeight: 600, color: C.forest, whiteSpace: 'nowrap' }}>{entry.zone}</td>
-                    <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 7px', borderRadius: 10, background: tc + '20', color: tc, fontWeight: 700, fontSize: 10 }}>
+                  <tr key={entry.id} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                    <td style={{ padding: '7px 11px', fontFamily: 'monospace', fontSize: 10, color: C.inkSoft, whiteSpace: 'nowrap' }}>{entry.timestamp.slice(0, 16).replace('T', ' ')}</td>
+                    <td style={{ padding: '7px 11px', fontWeight: 600, color: C.forest, whiteSpace: 'nowrap' }}>{entry.zone}</td>
+                    <td style={{ padding: '7px 11px', whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 10, background: tc + '20', color: tc, fontWeight: 700, fontSize: 10 }}>
                         {entry.isOverride ? '✋' : entry.type === 'تدخل تلقائي' ? '🤖' : '📊'} {entry.type}
                       </span>
                     </td>
-                    <td style={{ padding: '7px 12px', color: C.inkSoft, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.value}</td>
-                    <td style={{ padding: '7px 12px', fontWeight: 600, color: C.ink, whiteSpace: 'nowrap' }}>{entry.operator}</td>
-                    <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>{entry.sha}</td>
+                    <td style={{ padding: '7px 11px', color: C.inkSoft, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.value}</td>
+                    <td style={{ padding: '7px 11px', fontWeight: 600, color: C.ink, whiteSpace: 'nowrap' }}>{entry.operator}</td>
+                    <td style={{ padding: '7px 11px', fontFamily: 'monospace', fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>{entry.sha}</td>
                   </tr>
                 );
               })}
@@ -2180,7 +2295,159 @@ function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAudit
   );
 }
 
-// ─── Section 4: GAP Traceability ───
+// ─── Section 4: Batch Traceability ───
+function BatchTraceabilitySection({ isMobile }) {
+  const [selectedBatch, setSelectedBatch] = React.useState('BATCH-TOM-2026-001');
+  const thS: React.CSSProperties = { padding: '9px 12px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 11 };
+  const tdS: React.CSSProperties = { padding: '8px 12px', border: `1px solid ${C.border}`, fontSize: 12 };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+        {[
+          { label: 'دفعات نشطة',       value: '2',         color: C.ok     },
+          { label: 'سجلات مدخلات',     value: '20',        color: '#2563EB' },
+          { label: 'تنبيهات مفتوحة',   value: '0',         color: C.ok     },
+          { label: 'ربط فاتورة',        value: 'ديمو فقط', color: C.muted  },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: C.muted, marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Batches Table */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, fontWeight: 800, color: C.forest, fontSize: 14 }}>
+          سجل الدفعات — Batch Traceability
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+            <thead>
+              <tr>{['Batch ID', 'المحصول', 'المنطقة', 'تاريخ الزراعة', 'الحصاد المتوقع', 'سجلات المدخلات', 'ملخص الحساسات', 'ربط الفاتورة', 'الحالة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {BATCH_DATA.map((b, i) => (
+                <tr key={b.batchId} style={{ background: i % 2 === 0 ? '#fff' : C.cream, cursor: 'pointer' }} onClick={() => setSelectedBatch(b.batchId)}>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontWeight: 700, color: selectedBatch === b.batchId ? C.forest : C.inkSoft }}>{b.batchId}</td>
+                  <td style={{ ...tdS, fontWeight: 600 }}>{b.crop}</td>
+                  <td style={tdS}>{b.zone}</td>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11 }}>{b.planting}</td>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11 }}>{b.harvest}</td>
+                  <td style={{ ...tdS, color: '#2563EB', fontWeight: 600 }}>{b.inputs}</td>
+                  <td style={{ ...tdS, color: C.inkSoft, fontSize: 11 }}>{b.sensor}</td>
+                  <td style={{ ...tdS, color: C.muted, fontSize: 11 }}>{b.invoice}</td>
+                  <td style={tdS}><span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: b.statusColor + '18', color: b.statusColor, border: `1px solid ${b.statusColor}40` }}>{b.statusLabel}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: '10px 16px', background: '#FFFBEB', borderTop: `1px solid #FDE68A`, fontSize: 11, color: '#92400E' }}>
+          ⚠️ ربط الدفعة بالفاتورة الإلكترونية يظهر هنا كتصوّر معماري فقط. التكامل الفعلي يتطلب إعدادات واعتمادات مستقلة مع ZATCA.
+        </div>
+      </div>
+
+      {/* Batch Detail — Timeline for selected */}
+      {selectedBatch === 'BATCH-TOM-2026-001' && (
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: C.forest, marginBottom: 12 }}>
+            تفاصيل الدفعة: {selectedBatch}
+          </div>
+          <div style={{ background: '#fff', border: `2px solid ${C.lime}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontWeight: 900, color: C.forest, fontSize: isMobile ? 16 : 20 }}>BATCH-TOM-2026-001</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 4 }}>طماطم · المحمية A — جدة · مساحة 200 م²</div>
+              </div>
+              <Badge color={C.lime} text="🌿 Saudi GAP Tracked" />
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { label: 'المحصول', value: '🍅 طماطم' }, { label: 'المرحلة', value: '🌸 الإزهار' },
+                { label: 'صفر مبيدات', value: '✅' }, { label: 'SFDA.FD 382', value: '✅ ممتثل جزئياً' },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ background: C.creamDark, padding: '6px 12px', borderRadius: 8, fontSize: 11 }}>
+                  <span style={{ color: C.muted }}>{label}: </span>
+                  <span style={{ fontWeight: 700, color: C.forest }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: C.forest, fontSize: 14, marginBottom: 18 }}>رحلة الدفعة — Saudi GAP Timeline</div>
+            <div style={{ position: 'relative', paddingRight: 28 }}>
+              <div style={{ position: 'absolute', right: 11, top: 20, bottom: 20, width: 2, background: C.border }} />
+              {GAP_TIMELINE_STEPS.map((step, i) => {
+                const done = step.status === 'done', current = step.status === 'current';
+                const dc   = done ? C.ok : current ? C.lime : C.border;
+                return (
+                  <div key={i} style={{ display: 'flex', gap: 16, marginBottom: i < GAP_TIMELINE_STEPS.length - 1 ? 22 : 0 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: done ? C.ok + '25' : current ? C.lime + '25' : C.creamDark, border: `2px solid ${dc}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0, zIndex: 1, marginTop: 2 }}>
+                      {step.emoji}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 700, color: done ? C.forest : current ? C.lime : C.muted, fontSize: 14 }}>{step.title}</span>
+                          <span style={{ fontSize: 11, color: current ? C.lime : C.muted, fontWeight: current ? 700 : 400 }}>{step.subtitle}</span>
+                        </div>
+                        <span style={{ fontSize: 11, color: C.muted, fontFamily: 'monospace' }}>{step.date}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 4, lineHeight: 1.6 }}>{step.detail}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
+            <div style={{ fontWeight: 700, color: C.forest, fontSize: 14, marginBottom: 12 }}>QR تتبع الدفعة</div>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ width: 88, height: 88, background: '#000', borderRadius: 8, padding: 7, display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1.5, flexShrink: 0 }}>
+                {Array.from({ length: 36 }).map((_, i) => (
+                  <div key={i} style={{ background: [0,1,2,3,4,5,7,11,12,13,14,17,19,20,22,23,24,25,26,27,28,29,31,35].includes(i) ? '#fff' : '#000', borderRadius: 1 }} />
+                ))}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: C.forest, marginBottom: 6, fontSize: 13 }}>trace.igarden.sa/BATCH-TOM-2026-001</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.7, marginBottom: 8 }}>سجل الدفعة الكامل: تاريخ الزراعة · قراءات الحساسات · شهادة GAP · فاتورة ZATCA</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Badge color={C.ok}    text="✅ Saudi GAP Tracked" />
+                  <Badge color="#0EA5E9" text="📋 SFDA.FD 382/2018"  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedBatch === 'BATCH-LET-2026-002' && (
+        <div style={{ background: '#fff', border: `2px solid #2563EB`, borderRadius: 12, padding: 18 }}>
+          <div style={{ fontWeight: 900, color: '#2563EB', fontSize: 16, marginBottom: 8 }}>BATCH-LET-2026-002</div>
+          <div style={{ fontSize: 13, color: C.inkSoft }}>خس · المحمية B — الرياض · قراءات مستقرة · حصاد متوقع 2026-05-30</div>
+          <div style={{ marginTop: 10, fontSize: 12, color: C.muted }}>Timeline مفصّل قيد الإعداد لهذه الدفعة.</div>
+        </div>
+      )}
+
+      {/* Regulatory Refs */}
+      <div style={{ padding: 14, background: C.creamDark, borderRadius: 10 }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: C.forest, marginBottom: 10 }}>المراجع التنظيمية</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+          {REGULATORY_REFS.map(ref => (
+            <div key={ref.code} style={{ background: '#fff', padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 11, color: C.forest }}>{ref.code}</div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>{ref.authority}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GAPTraceability({ isMobile }) {
   return (
     <div>
