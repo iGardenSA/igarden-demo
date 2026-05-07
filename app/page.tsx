@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, ComposedChart } from 'recharts';
-import { Sprout, Droplets, Thermometer, Wind, Zap, Activity, Settings, BarChart3, Layers, Download, AlertTriangle, CheckCircle2, TrendingUp, MapPin, Calendar, Beaker, Sun, Power, RefreshCw, Save, ChevronLeft, Cpu, FlaskConical, Leaf, CloudRain } from 'lucide-react';
+import { Sprout, Droplets, Thermometer, Wind, Zap, Activity, Settings, BarChart3, Layers, Download, AlertTriangle, CheckCircle2, TrendingUp, MapPin, Calendar, Beaker, Sun, Power, RefreshCw, Save, ChevronLeft, Cpu, FlaskConical, Leaf, CloudRain, ShieldCheck, FileText, Clock, X, Eye, Printer } from 'lucide-react';
+import { REGULATORY_REFS, DISCLAIMER_TEXT, ESTABLISHMENT_INFO } from './compliance/standards';
+import { calcComplianceScore, mockSHA, generateAuditEntries } from './compliance/compliance-engine';
+import type { AuditEntry } from './compliance/compliance-engine';
 
 // ═══════════════════════════════════════════════════════════════════
 // 🌱 iGarden Smart OS — Demo Seed v1.0
@@ -306,10 +309,11 @@ export default function DemoPage() {
   }, [zones, isRunning]);
 
   const tabs = [
-    { id: 'live',     label: 'لوحة المعطيات الحية', icon: Activity },
-    { id: 'engine',   label: 'محرّك التوصيات',       icon: Sprout },
-    { id: 'history',  label: 'السجل التاريخي',        icon: BarChart3 },
-    { id: 'zones',    label: 'إعدادات المناطق',       icon: Layers },
+    { id: 'live',       label: 'لوحة المعطيات الحية', icon: Activity },
+    { id: 'engine',     label: 'محرّك التوصيات',       icon: Sprout },
+    { id: 'history',    label: 'السجل التاريخي',        icon: BarChart3 },
+    { id: 'zones',      label: 'إعدادات المناطق',       icon: Layers },
+    { id: 'compliance', label: '📋 الامتثال',           icon: ShieldCheck },
   ];
 
   return (
@@ -361,6 +365,7 @@ export default function DemoPage() {
         {activeTab === 'engine' && <CropEngine isMobile={isMobile} zones={zones} setZones={setZones} overrides={overrides} setOverrides={setOverrides} />}
         {activeTab === 'history' && <HistoryTab isMobile={isMobile} historicalData={historicalData} zones={zones} />}
         {activeTab === 'zones' && <ZonesSettings isMobile={isMobile} zones={zones} setZones={setZones} />}
+        {activeTab === 'compliance' && <ComplianceTab isMobile={isMobile} historicalData={historicalData} zones={zones} />}
       </main>
 
       {/* ═══ Footer ═══ */}
@@ -1204,5 +1209,913 @@ function DeviceToggle({ name, desc, icon: Icon, on, onChange, color }) {
       </div>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: on ? color : C.muted, flexShrink: 0 }}></span>
     </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🟢 5) Compliance Tab — طبقة الامتثال السعودي
+// ═══════════════════════════════════════════════════════════════════
+
+const REPORT_DEFS = [
+  {
+    id: 'mewa-monthly',
+    title: 'التقرير الشهري للمياه والامتثال',
+    authority: 'وزارة البيئة والمياه والزراعة',
+    badge: 'MEWA — إلزامي',
+    icon: '📊',
+    desc: 'ملخّص شهري: قراءات EC/pH/حرارة · استهلاك المياه · الانحرافات · توصيات النظام التلقائية',
+    ref: 'MEWA-AGR-LAW-IR',
+    reportNo: 'RPT-MEWA-2026-05',
+    status: 'ready',
+    frequency: 'شهري',
+    pages: 3,
+    lastDate: '2026-05-06',
+    accentColor: '#0F3D2E',
+  },
+  {
+    id: 'saudi-gap',
+    title: 'شهادة الممارسات الزراعية الجيدة',
+    authority: 'MEWA — منصة نعمة (NAAMA)',
+    badge: 'Saudi GAP Certificate',
+    icon: '🌿',
+    desc: 'شهادة GAP كاملة: قائمة فحص 8 بنود + تقييم المخاطر + نتيجة الشهادة + توقيع المفتّش',
+    ref: 'Saudi GAP',
+    reportNo: 'GAP-CERT-2026-04-A',
+    status: 'ready',
+    frequency: 'سنوي / بالدفعة',
+    pages: 2,
+    lastDate: '2026-04-10',
+    accentColor: '#7CB342',
+  },
+  {
+    id: 'water-efficiency',
+    title: 'سجل ترشيد المياه',
+    authority: 'وزارة البيئة والمياه والزراعة',
+    badge: 'Water Use Efficiency',
+    icon: '💧',
+    desc: 'مقارنة هيدروبونيك vs ري تقليدي · نسبة التوفير · الأثر البيئي السنوي · مستهدف MEWA',
+    ref: 'MEWA-AGR-LAW-IR',
+    reportNo: 'RPT-WUE-2026-05',
+    status: 'ready',
+    frequency: 'شهري',
+    pages: 2,
+    lastDate: '2026-05-06',
+    accentColor: '#0EA5E9',
+  },
+  {
+    id: 'zatca-fatoora',
+    title: 'فاتورة إلكترونية — Fatoora Phase 2',
+    authority: 'هيئة الزكاة والضريبة والجمارك',
+    badge: 'ZATCA E-Invoice',
+    icon: '🧾',
+    desc: 'فاتورة ضريبية كاملة: بائع/مشتري + بنود + ضريبة 15% + ربط BATCH-ID + QR Fatoora',
+    ref: 'ZATCA Fatoora Phase 2',
+    reportNo: 'INV-2026-04-A-001',
+    status: 'ready',
+    frequency: 'بالدفعة',
+    pages: 1,
+    lastDate: '2026-05-06',
+    accentColor: '#7C3AED',
+  },
+];
+
+const GAP_TIMELINE_STEPS = [
+  { emoji: '🌱', title: 'البذر',             subtitle: 'مكتمل',   date: '2026-02-10', status: 'done',     detail: 'مصدر البذور: نورس للبذور السعودية · شهادة صحة بذور SEED-2026-0142' },
+  { emoji: '🌿', title: 'الإنبات',           subtitle: 'مكتمل',   date: '2026-02-24', status: 'done',     detail: '847 قراءة حساس مسجّلة · معدل إنبات 94%' },
+  { emoji: '🌳', title: 'النمو الخضري',      subtitle: 'مكتمل',   date: '2026-03-20', status: 'done',     detail: 'NPK: 150-60-200 ppm · صفر مبيدات مستخدمة' },
+  { emoji: '🌸', title: 'الإزهار',           subtitle: '(الحالي)',  date: '2026-04-10', status: 'current',  detail: 'متابعة حية · EC: 2.5–3.0 mS/cm · pH: 5.8–6.2' },
+  { emoji: '🍅', title: 'الإثمار',           subtitle: 'متوقع',    date: '2026-05-15', status: 'upcoming', detail: 'المتوقع: 120–150 كيلو · العنابر الثلاث' },
+  { emoji: '📦', title: 'الحصاد والتعبئة',  subtitle: 'متوقع',    date: '2026-06-10', status: 'upcoming', detail: 'QR auto-bind لفاتورة ZATCA Fatoora عند التعبئة' },
+];
+
+function ComplianceTab({ isMobile, historicalData, zones }) {
+  const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability'>('scores');
+  const [reportModal, setReportModal] = useState<string | null>(null);
+  const [auditZone, setAuditZone]     = useState('all');
+  const [auditType, setAuditType]     = useState('all');
+  const [auditPeriod, setAuditPeriod] = useState('30d');
+
+  const sections = [
+    { id: 'scores',       label: '🏆 درجة الامتثال',  icon: ShieldCheck },
+    { id: 'reports',      label: '📄 مكتبة التقارير',  icon: FileText    },
+    { id: 'audit',        label: '🕐 سجل المراجعة',    icon: Clock       },
+    { id: 'traceability', label: '🔗 تتبع الدفعة',     icon: Leaf        },
+  ];
+
+  const allAudit: AuditEntry[] = useMemo(
+    () => generateAuditEntries(zones, historicalData),
+    [zones, historicalData]
+  );
+
+  const periodDays = auditPeriod === '24h' ? 1 : auditPeriod === '7d' ? 7 : 30;
+  const cutoff     = new Date(Date.now() - periodDays * 86400000).toISOString().slice(0, 10);
+
+  const filteredAudit = useMemo(() => allAudit.filter(e => {
+    if (auditZone !== 'all' && e.zoneId !== auditZone) return false;
+    if (auditType !== 'all' && e.type !== auditType)   return false;
+    if (e.timestamp.slice(0, 10) < cutoff)             return false;
+    return true;
+  }), [allAudit, auditZone, auditType, cutoff]);
+
+  const downloadAuditCSV = () => {
+    const headers = ['الوقت', 'المنطقة', 'النوع', 'القيمة', 'المشغّل', 'الختم'];
+    const rows = filteredAudit.map(e =>
+      [e.timestamp, e.zone, e.type, e.value, e.operator, e.sha].join(',')
+    );
+    const csv  = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `igarden-audit-trail-${auditPeriod}.csv`;
+    link.click();
+  };
+
+  return (
+    <div>
+      {/* Banner */}
+      <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.forestLight} 100%)`, color: '#fff', borderRadius: 12, padding: isMobile ? 18 : 24, marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -30, left: -20, fontSize: 160, opacity: 0.05, pointerEvents: 'none' }}>🛡️</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'rgba(124,179,66,0.18)', borderRadius: 14, fontSize: 11, fontWeight: 700, color: C.lime, marginBottom: 10, border: `1px solid ${C.lime}40` }}>
+          🇸🇦 MEWA · SFDA · Saudi GAP · ZATCA
+        </div>
+        <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900 }}>طبقة الامتثال السعودي</h2>
+        <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: isMobile ? 12 : 14 }}>
+          مراقبة الامتثال لمعايير MEWA وSFDA.FD 382/2018 وSaudi GAP وZATCA Fatoora
+        </p>
+      </div>
+
+      {/* Section Navigation */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: '4px 6px', marginBottom: 20, display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <style>{`div.comp-nav::-webkit-scrollbar { display: none; }`}</style>
+        {sections.map(s => {
+          const active = section === s.id;
+          const Icon   = s.icon;
+          return (
+            <button key={s.id} onClick={() => setSection(s.id as typeof section)} style={{
+              flex: '1 1 auto', padding: isMobile ? '9px 6px' : '10px 14px',
+              background: active ? C.forest : 'transparent',
+              color: active ? '#fff' : C.inkSoft,
+              border: 'none', borderRadius: 8, cursor: 'pointer',
+              fontFamily: 'inherit', fontWeight: active ? 700 : 500,
+              fontSize: isMobile ? 11 : 12, whiteSpace: 'nowrap',
+              display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center',
+              transition: 'all .15s',
+            }}>
+              <Icon size={13} />{s.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Sections */}
+      {section === 'scores'       && <ComplianceScores   isMobile={isMobile} historicalData={historicalData} />}
+      {section === 'reports'      && <ReportsLibrary     isMobile={isMobile} historicalData={historicalData} zones={zones} setReportModal={setReportModal} />}
+      {section === 'audit'        && (
+        <AuditTrailSection
+          isMobile={isMobile}
+          filteredAudit={filteredAudit}
+          zones={zones}
+          auditZone={auditZone}   setAuditZone={setAuditZone}
+          auditType={auditType}   setAuditType={setAuditType}
+          auditPeriod={auditPeriod} setAuditPeriod={setAuditPeriod}
+          downloadAuditCSV={downloadAuditCSV}
+        />
+      )}
+      {section === 'traceability' && <GAPTraceability    isMobile={isMobile} />}
+
+      {/* Disclaimer */}
+      <div style={{ marginTop: 24, padding: '12px 16px', background: `${C.lime}08`, border: `1px dashed ${C.lime}60`, borderRadius: 10, fontSize: 11, color: C.inkSoft, lineHeight: 1.8 }}>
+        <strong style={{ color: C.forest }}>* ملاحظة الشفافية: </strong>{DISCLAIMER_TEXT}
+      </div>
+
+      {/* Report Modal */}
+      {reportModal && (
+        <ReportModal
+          reportId={reportModal}
+          onClose={() => setReportModal(null)}
+          historicalData={historicalData}
+          zones={zones}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Section 1: درجة الامتثال per Zone ───
+function ComplianceScores({ isMobile, historicalData }) {
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 20 }}>
+        {Object.entries(REGIONS).map(([rk, region]) => {
+          const hist = (historicalData[rk] || []) as Array<{ ph: number; ec: number; tempIn: number }>;
+          const { score, deviations } = calcComplianceScore(hist);
+          const hasData   = hist.length > 0;
+          const sc        = score;
+          const statusCol = sc >= 95 ? C.ok : sc >= 85 ? '#F59E0B' : '#DC2626';
+          const statusTxt = sc >= 95 ? '🟢 ممتثل' : sc >= 85 ? '🟡 يحتاج مراجعة' : '🔴 خارج النطاق';
+
+          return (
+            <div key={rk} style={{ background: '#fff', border: `2px solid ${statusCol}40`, borderRadius: 12, padding: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <span style={{ fontSize: 26, flexShrink: 0 }}>{region.icon}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: C.forest, fontSize: 15 }}>{region.name}</div>
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{region.desc}</div>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                  <div style={{ fontSize: 26, fontWeight: 900, color: hasData ? statusCol : C.muted, fontVariantNumeric: 'tabular-nums' }}>
+                    {hasData ? sc : '—'}%
+                  </div>
+                  <div style={{ fontSize: 9, color: C.muted }}>آخر 30 يوم</div>
+                </div>
+              </div>
+
+              <Badge color={statusCol} text={statusTxt} />
+
+              {deviations > 0 && (
+                <div style={{ marginTop: 8, fontSize: 11, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <AlertTriangle size={12} /> {deviations} انحراف مسجّل
+                </div>
+              )}
+
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {[
+                  { label: 'سجل قراءات يومية',         ok: hist.length >= 25 },
+                  { label: 'ضمن نطاق pH (5.5–7.5)',     ok: sc >= 90 },
+                  { label: 'مرجع MEWA-AGR-LAW-IR',      ok: true },
+                  { label: 'تتبع Saudi GAP',             ok: sc >= 85 },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.inkSoft }}>
+                    <span style={{ color: item.ok ? C.ok : '#F59E0B', fontWeight: 700, flexShrink: 0 }}>{item.ok ? '✓' : '○'}</span>
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* القيم المرجعية */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
+        <h3 style={{ margin: '0 0 14px', color: C.forest, fontSize: 15, fontWeight: 700 }}>القيم المرجعية المعتمدة (Saudi GAP / MEWA)</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 12 }}>
+          <RecCard title="🧪 pH المياه"    value="5.5 – 7.5" unit=""      color="#A855F7" />
+          <RecCard title="⚡ EC المياه"    value="≤ 2.5"     unit="mS/cm" color={C.lime}  />
+          <RecCard title="💧 TDS"          value="≤ 1500"    unit="ppm"   color="#0EA5E9" />
+          <RecCard title="☢️ الكلور الحر" value="≤ 0.5"     unit="mg/L"  color="#F59E0B" />
+        </div>
+        <div style={{ fontSize: 11, color: C.muted }}>
+          المرجع: Saudi GAP / MEWA Agriculture Law Implementing Regulations · SFDA.FD 382/2018
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 2: مكتبة التقارير ───
+function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(270px, 1fr))', gap: 16 }}>
+      {REPORT_DEFS.map(report => (
+        <div key={report.id} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ height: 5, background: report.accentColor }} />
+          <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 10, background: report.accentColor + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, border: `1px solid ${report.accentColor}30` }}>
+                {report.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, color: C.ink, fontSize: 14, lineHeight: 1.3 }}>{report.title}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{report.authority}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.ok, background: '#ECFDF5', padding: '3px 9px', borderRadius: 20, border: '1px solid #A7F3D0' }}>✅ جاهز للإرسال</span>
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: C.inkSoft, background: C.creamDark, padding: '3px 8px', borderRadius: 6 }}>{report.reportNo}</span>
+            </div>
+            <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.65 }}>{report.desc}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: C.muted }}>
+              <span>🔄 {report.frequency}</span>
+              <span>📄 {report.pages} صفحات</span>
+              <span>📅 {report.lastDate}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+              <button
+                onClick={() => setReportModal(report.id)}
+                style={{ flex: 1, padding: '9px 12px', background: report.accentColor, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Eye size={14} /> معاينة
+              </button>
+              <button
+                onClick={() => { setReportModal(report.id); setTimeout(() => window.print(), 400); }}
+                style={{ padding: '9px 12px', background: C.creamDark, color: C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}
+                title="طباعة مباشرة"
+              >
+                <Printer size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Report Modal ───
+function ReportModal({ reportId, onClose, historicalData, zones }) {
+  const report = REPORT_DEFS.find(r => r.id === reportId);
+  if (!report) return null;
+
+  const today    = new Date().toISOString().slice(0, 10);
+  const firstKey = Object.keys(REGIONS)[0];
+  const hist     = (historicalData[firstKey] || []) as Array<{ dateFull: string; ph: number; ec: number; tempIn: number; humIn: number; water: number }>;
+  const last30   = hist.slice(-30);
+  const last15   = hist.slice(-15);
+
+  const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  const avgPH   = avg(last30.map(r => r.ph));
+  const avgEC   = avg(last30.map(r => r.ec));
+  const avgTemp = avg(last30.map(r => r.tempIn));
+  const avgHum  = avg(last30.map(r => r.humIn));
+  const phPass  = last30.filter(r => r.ph >= 5.5 && r.ph <= 7.5).length;
+  const ecPass  = last30.filter(r => r.ec <= 2.5).length;
+  const tpPass  = last30.filter(r => r.tempIn >= 18 && r.tempIn <= 30).length;
+  const deviations    = (last30.length - phPass) + (last30.length - ecPass) + (last30.length - tpPass);
+  const compliancePct = last30.length ? Math.round(((phPass + ecPass + tpPass) / (last30.length * 3)) * 100) : 0;
+  const totalWater30  = last30.reduce((s, r) => s + (r.water || 0), 0);
+  const dailyAvgWater = last30.length ? totalWater30 / last30.length : 0;
+  const perM2PerDay   = dailyAvgWater / 200;
+  const savingsPct    = Math.round((1 - perM2PerDay / 6.0) * 100);
+  const monthlySaved  = Math.round((6.0 - perM2PerDay) * 200 * 30);
+  const sha           = mockSHA(reportId + today);
+
+  const autoRecs: string[] = [];
+  if (avgPH < 6.0)  autoRecs.push('⚙️ رفع pH — المتوسط (' + avgPH.toFixed(2) + ') أقل من الحد الأمثل 6.0');
+  if (avgPH > 7.0)  autoRecs.push('⚙️ خفض pH — المتوسط (' + avgPH.toFixed(2) + ') تجاوز 7.0');
+  if (avgEC > 2.0)  autoRecs.push('⚙️ تخفيف المحلول — EC (' + avgEC.toFixed(2) + ' mS/cm) مرتفع');
+  if (avgEC < 1.5)  autoRecs.push('⚙️ ضخّ سماد إضافي — EC (' + avgEC.toFixed(2) + ' mS/cm) منخفض');
+  if (avgTemp > 28) autoRecs.push('⚙️ تشغيل التبريد — حرارة المحيط (' + avgTemp.toFixed(1) + '°C) مرتفعة');
+  if (autoRecs.length === 0) autoRecs.push('✅ جميع المؤشرات ضمن النطاقات المثلى خلال آخر 30 يوم');
+
+  const rowStyle = (i: number): React.CSSProperties => ({ background: i % 2 === 0 ? '#fff' : C.cream });
+  const tdS: React.CSSProperties = { padding: '6px 10px', border: `1px solid ${C.border}`, fontSize: 12 };
+  const thS: React.CSSProperties = { padding: '8px 10px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 12 };
+
+  return (
+    <div
+      className="report-modal-overlay"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,61,46,0.8)', zIndex: 300, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '20px 14px', overflowY: 'auto' }}
+    >
+      <style>{`
+        @media print {
+          .report-modal-overlay { position: static !important; background: none !important; padding: 0 !important; }
+          .report-modal-inner   { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; }
+          .no-print             { display: none !important; }
+          body                  { background: #fff !important; }
+          @page                 { size: A4; margin: 18mm 14mm; }
+        }
+      `}</style>
+      <div className="report-modal-inner" style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 750, marginBottom: 20, boxShadow: '0 24px 64px rgba(0,0,0,0.35)' }}>
+
+        {/* Header */}
+        <div style={{ background: report.accentColor, color: '#fff', padding: '16px 22px', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <IGardenLogo variant="white" size={36} />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>{report.title}</div>
+              <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2, fontFamily: 'monospace' }}>{report.reportNo} · {report.authority}</div>
+            </div>
+          </div>
+          <div className="no-print" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button onClick={() => window.print()} style={{ padding: '7px 14px', background: '#fff', color: report.accentColor, border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Printer size={13} /> طباعة PDF
+            </button>
+            <button onClick={onClose} style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+              <X size={17} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 22px' }}>
+
+          {/* بيانات المنشأة */}
+          <div style={{ background: C.creamDark, borderRadius: 8, padding: '12px 16px', marginBottom: 18 }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: C.forest, marginBottom: 8 }}>بيانات المنشأة</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '6px 14px', fontSize: 12 }}>
+              {[
+                ['الاسم العربي',    ESTABLISHMENT_INFO.nameAr],
+                ['الاسم الإنجليزي', ESTABLISHMENT_INFO.nameEn],
+                ['السجل التجاري',   ESTABLISHMENT_INFO.cr],
+                ['رقم MISA',        ESTABLISHMENT_INFO.misa],
+                ['النظام',          ESTABLISHMENT_INFO.system],
+                ['تاريخ الإصدار',   today],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', gap: 6 }}>
+                  <span style={{ color: C.muted, flexShrink: 0 }}>{k}:</span>
+                  <span style={{ fontWeight: 600, color: C.ink }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ══ MEWA Monthly ══ */}
+          {reportId === 'mewa-monthly' && (
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: report.accentColor, marginBottom: 14, paddingBottom: 8, borderBottom: `2px solid ${report.accentColor}30` }}>
+                التقرير الشهري للمياه والامتثال — {today.slice(0, 7)}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+                {[
+                  { label: 'متوسط pH',      value: avgPH.toFixed(2),        ok: avgPH >= 5.5 && avgPH <= 7.5, ref: '5.5 – 7.5' },
+                  { label: 'متوسط EC',      value: avgEC.toFixed(2) + ' mS', ok: avgEC <= 2.5,                ref: '≤ 2.5 mS/cm' },
+                  { label: 'نسبة الامتثال', value: compliancePct + '%',      ok: compliancePct >= 85,          ref: 'الهدف 85%' },
+                  { label: 'انحرافات',       value: String(deviations),       ok: deviations === 0,             ref: 'الهدف صفر' },
+                ].map(kpi => (
+                  <div key={kpi.label} style={{ background: '#fff', border: `1px solid ${kpi.ok ? C.ok + '50' : C.danger + '40'}`, borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{kpi.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: kpi.ok ? C.ok : C.danger, lineHeight: 1 }}>{kpi.value}</div>
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>{kpi.ref}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 8 }}>سجل القراءات اليومية — آخر 30 يوم</div>
+              <div style={{ overflowX: 'auto', maxHeight: 280, overflowY: 'auto', marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 500 }}>
+                  <thead style={{ position: 'sticky', top: 0 }}>
+                    <tr>{['#', 'التاريخ', 'pH', 'EC (mS/cm)', 'حرارة °C', 'رطوبة %', 'الحالة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {last30.map((row, i) => {
+                      const phOk  = row.ph >= 5.5 && row.ph <= 7.5;
+                      const ecOk  = row.ec <= 2.5;
+                      const tmpOk = row.tempIn >= 18 && row.tempIn <= 30;
+                      const allOk = phOk && ecOk && tmpOk;
+                      return (
+                        <tr key={i} style={rowStyle(i)}>
+                          <td style={{ ...tdS, color: C.muted }}>{i + 1}</td>
+                          <td style={tdS}>{row.dateFull}</td>
+                          <td style={{ ...tdS, color: phOk ? C.ok : C.danger, fontWeight: 600 }}>{row.ph}</td>
+                          <td style={{ ...tdS, color: ecOk ? C.ok : C.danger, fontWeight: 600 }}>{row.ec}</td>
+                          <td style={{ ...tdS, color: tmpOk ? C.ink : C.danger }}>{row.tempIn}</td>
+                          <td style={tdS}>{row.humIn}</td>
+                          <td style={{ ...tdS, fontWeight: 700, color: allOk ? C.ok : C.danger }}>{allOk ? '✓ ممتثل' : '✗ انحراف'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ background: `${report.accentColor}08`, border: `1px solid ${report.accentColor}25`, borderRadius: 8, padding: 14 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: report.accentColor, marginBottom: 8 }}>توصيات النظام التلقائية</div>
+                {autoRecs.map((r, i) => <div key={i} style={{ fontSize: 12, color: C.inkSoft, marginBottom: 5, lineHeight: 1.5 }}>{r}</div>)}
+              </div>
+            </div>
+          )}
+
+          {/* ══ Saudi GAP ══ */}
+          {reportId === 'saudi-gap' && (
+            <div>
+              <div style={{ border: `3px double ${report.accentColor}`, borderRadius: 10, padding: 20, marginBottom: 16, position: 'relative' }}>
+                <div style={{ position: 'absolute', top: -12, right: 20, background: '#fff', padding: '0 8px', fontWeight: 800, fontSize: 13, color: report.accentColor }}>
+                  شهادة الممارسات الزراعية الجيدة — Saudi GAP
+                </div>
+                <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: C.muted }}>صادرة بموجب: {REGULATORY_REFS[2].fullName}</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>الجهة: {REGULATORY_REFS[2].authority}</div>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: C.forest, marginTop: 6 }}>GAP-CERT-2026-04-A</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: 12, marginBottom: 12 }}>
+                  {[
+                    ['الدفعة',             'BATCH-2026-04-A'],
+                    ['المحصول',            'طماطم (Solanum lycopersicum)'],
+                    ['المنشأ / المنطقة',   'محمية A — جدة'],
+                    ['تاريخ الزراعة',      '2026-02-10'],
+                    ['الحصاد المتوقع',     '2026-06-10'],
+                    ['المساحة',            '200 م²'],
+                    ['المبيدات المستخدمة', 'صفر — نظام عضوي'],
+                    ['نوع الزراعة',        'هيدروبونيك مغلق'],
+                  ].map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', gap: 6 }}>
+                      <span style={{ color: C.muted, flexShrink: 0 }}>{k}:</span>
+                      <span style={{ fontWeight: 600, color: C.ink }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 8 }}>قائمة فحص GAP — 8 بنود</div>
+              <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>{['#', 'بند الفحص', 'المتطلب', 'الحالة', 'الملاحظة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ['1', 'جودة مياه الري',        'pH 5.5–7.5 · EC ≤ 2.5',    'ممتثل', `متوسط pH ${avgPH.toFixed(1)}`],
+                      ['2', 'متبقيات المبيدات',       'SFDA.FD 382 — صفر تجاوز',  'ممتثل', 'لا مبيدات — هيدروبونيك'],
+                      ['3', 'تتبع رقمي للدفعات',      'SHA + BATCH-ID موثّق',      'ممتثل', `SHA: ${mockSHA('batch-2026-04-A')}`],
+                      ['4', 'نظافة المنشأة',          'بروتوكول تعقيم أسبوعي',     'ممتثل', 'تعقيم 2026-04-28'],
+                      ['5', 'كفاءة استخدام المياه',   'ترشيد ≥ 50% vs تقليدي',    'ممتثل', `توفير ${savingsPct}%`],
+                      ['6', 'تسجيل العمال',           'هويات موثّقة في النظام',     'ممتثل', '3 مشغّلين مسجّلين'],
+                      ['7', 'تخزين ونقل المنتج',      'سلسلة تبريد < 6°C',         'ممتثل', 'ثلاجة مراقَبة بالنظام'],
+                      ['8', 'التدريب والكفاءة',       'شهادة Saudi GAP للمشغّلين',  'ممتثل', 'دورة 2025-11-14'],
+                    ].map(([num, item, req, status, note], i) => (
+                      <tr key={num} style={rowStyle(i)}>
+                        <td style={{ ...tdS, color: C.muted }}>{num}</td>
+                        <td style={{ ...tdS, fontWeight: 600 }}>{item}</td>
+                        <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{req}</td>
+                        <td style={{ ...tdS, color: C.ok, fontWeight: 700 }}>{status} ✓</td>
+                        <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+                {[
+                  { cat: 'خطر بيولوجي', level: 'منخفض', color: C.ok },
+                  { cat: 'خطر كيميائي', level: 'معدوم',  color: C.ok },
+                  { cat: 'خطر فيزيائي', level: 'منخفض', color: C.ok },
+                ].map(({ cat, level, color }) => (
+                  <div key={cat} style={{ background: '#fff', border: `1px solid ${color}40`, borderRadius: 8, padding: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: C.muted }}>{cat}</div>
+                    <div style={{ fontWeight: 800, color, fontSize: 16, marginTop: 4 }}>{level}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, borderTop: `1px dashed ${C.border}`, paddingTop: 14 }}>
+                {['أُعدّ بواسطة النظام', 'مراجع ومعتمد — م. علي الحربي', 'ختم المنشأة'].map(role => (
+                  <div key={role} style={{ textAlign: 'center', fontSize: 12 }}>
+                    <div style={{ color: C.muted, marginBottom: 28 }}>{role}</div>
+                    <div style={{ borderBottom: `1px solid ${C.ink}`, marginBottom: 4 }} />
+                    <div style={{ color: C.muted, fontSize: 10 }}>التاريخ: {today}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══ Water Efficiency ══ */}
+          {reportId === 'water-efficiency' && (
+            <div>
+              <div style={{ background: `linear-gradient(135deg, ${report.accentColor} 0%, #0284C7 100%)`, color: '#fff', borderRadius: 10, padding: '20px 24px', marginBottom: 16, textAlign: 'center' }}>
+                <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>نسبة توفير المياه — هيدروبونيك مقارنةً بالري التقليدي</div>
+                <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1 }}>{savingsPct}%</div>
+                <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }}>توفير شهري ≈ {monthlySaved.toLocaleString()} لتر · مصدر: MEWA-AGR-LAW-IR</div>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 8 }}>مقارنة أساليب الري</div>
+              <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>{['المعيار', 'هيدروبونيك iGarden', 'ري تقليدي', 'الفرق'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ['استهلاك المياه/م²/يوم', `${perM2PerDay.toFixed(2)} لتر`,              '6.00 لتر',    `−${(6.0 - perM2PerDay).toFixed(2)} لتر`],
+                      ['إجمالي شهري/200م²',     `${(dailyAvgWater * 30).toFixed(0)} لتر`,      '36,000 لتر',  `−${monthlySaved.toLocaleString()} لتر`],
+                      ['تسرّب خارج المنظومة',   'صفر (نظام مغلق)',                             '15 – 30%',    'صفر مقابل تسرّب'],
+                      ['TDS مياه الري',          `${REGIONS[firstKey as keyof typeof REGIONS].waterTDS} ppm`, 'متغيّر', 'مراقَب تلقائياً'],
+                      ['مستهدف MEWA 2030',       '≤ 2 لتر/م²/يوم',                             '—',           '✓ ضمن الهدف'],
+                    ].map(([m, ig, trad, diff], i) => (
+                      <tr key={m} style={rowStyle(i)}>
+                        <td style={{ ...tdS, fontWeight: 600 }}>{m}</td>
+                        <td style={{ ...tdS, color: report.accentColor, fontWeight: 700 }}>{ig}</td>
+                        <td style={{ ...tdS, color: C.danger }}>{trad}</td>
+                        <td style={{ ...tdS, color: C.ok, fontWeight: 600 }}>{diff}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 8 }}>سجل الاستهلاك — آخر 15 يوم</div>
+              <div style={{ overflowX: 'auto', marginBottom: 14, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 400 }}>
+                  <thead>
+                    <tr>{['التاريخ', 'استهلاك (لتر)', 'لتر/م²', 'TDS (ppm)', 'الحالة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {last15.map((row, i) => (
+                      <tr key={i} style={rowStyle(i)}>
+                        <td style={tdS}>{row.dateFull}</td>
+                        <td style={{ ...tdS, fontWeight: 600, color: report.accentColor }}>{row.water}</td>
+                        <td style={tdS}>{((row.water || 0) / 200).toFixed(2)}</td>
+                        <td style={tdS}>{REGIONS[firstKey as keyof typeof REGIONS].waterTDS}</td>
+                        <td style={{ ...tdS, color: C.ok, fontWeight: 600 }}>✓ ضمن الحد</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ background: `${report.accentColor}08`, border: `1px solid ${report.accentColor}25`, borderRadius: 8, padding: 14 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: report.accentColor, marginBottom: 8 }}>الأثر البيئي السنوي</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+                  {[
+                    { label: 'مياه موفّرة/سنة',             value: (monthlySaved * 12 / 1000).toFixed(1) + ' م³' },
+                    { label: 'تخفيض استنزاف الخزانات',      value: savingsPct + '%' },
+                    { label: 'مزارع مكافئة يمكن رويها',     value: Math.round(monthlySaved * 12 / 36000) + ' مزارع' },
+                    { label: 'توافق مستهدف Vision 2030',    value: '✓ ممتثل' },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ background: '#fff', borderRadius: 8, padding: 10, textAlign: 'center', border: `1px solid ${report.accentColor}20`, fontSize: 12 }}>
+                      <div style={{ fontSize: 10, color: C.muted }}>{label}</div>
+                      <div style={{ fontWeight: 800, color: report.accentColor, fontSize: 16, marginTop: 4 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══ ZATCA Fatoora ══ */}
+          {reportId === 'zatca-fatoora' && (
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: report.accentColor, marginBottom: 14, paddingBottom: 8, borderBottom: `2px solid ${report.accentColor}30` }}>
+                فاتورة ضريبية إلكترونية — Fatoora Phase 2
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                {[
+                  { title: 'البائع (المورد)', fields: [['الاسم', 'شركة انتيليجنت غاردن'], ['الرقم الضريبي', '310012345600003'], ['CR', ESTABLISHMENT_INFO.cr], ['العنوان', 'جدة، حي الأمانة']] },
+                  { title: 'المشتري',         fields: [['الاسم', 'مجمع الرياض الغذائي'], ['الرقم الضريبي', '310087654300001'], ['رقم الدفعة', 'BATCH-2026-04-A'], ['العنوان', 'الرياض، حي الروابي']] },
+                ].map(({ title, fields }) => (
+                  <div key={title} style={{ background: C.creamDark, borderRadius: 8, padding: 14 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: report.accentColor, marginBottom: 8 }}>{title}</div>
+                    {fields.map(([k, v]) => (
+                      <div key={k} style={{ display: 'flex', gap: 6, fontSize: 12, marginBottom: 4 }}>
+                        <span style={{ color: C.muted, flexShrink: 0 }}>{k}:</span>
+                        <span style={{ fontWeight: 600, color: C.ink }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 8 }}>بنود الفاتورة</div>
+              <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>{['الصنف', 'الكمية', 'سعر الوحدة', 'المجموع', 'ضريبة 15%', 'الإجمالي'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ background: '#fff' }}>
+                      <td style={{ ...tdS, fontWeight: 600 }}>طماطم هيدروبونيك — BATCH-2026-04-A</td>
+                      <td style={tdS}>150 كغ</td>
+                      <td style={tdS}>5.00 ر.س</td>
+                      <td style={tdS}>750.00 ر.س</td>
+                      <td style={{ ...tdS, color: report.accentColor }}>112.50 ر.س</td>
+                      <td style={{ ...tdS, fontWeight: 800 }}>862.50 ر.س</td>
+                    </tr>
+                    <tr style={{ background: C.creamDark }}>
+                      <td colSpan={3} style={{ ...tdS, fontWeight: 700, textAlign: 'right' }}>الإجمالي قبل الضريبة</td>
+                      <td colSpan={3} style={{ ...tdS, fontWeight: 800, fontSize: 14 }}>750.00 ر.س</td>
+                    </tr>
+                    <tr style={{ background: C.creamDark }}>
+                      <td colSpan={3} style={{ ...tdS, fontWeight: 700, textAlign: 'right', color: report.accentColor }}>ضريبة القيمة المضافة 15%</td>
+                      <td colSpan={3} style={{ ...tdS, fontWeight: 700, color: report.accentColor }}>112.50 ر.س</td>
+                    </tr>
+                    <tr style={{ background: `${report.accentColor}12` }}>
+                      <td colSpan={3} style={{ ...tdS, fontWeight: 900, fontSize: 14, textAlign: 'right', color: report.accentColor }}>الإجمالي شامل الضريبة</td>
+                      <td colSpan={3} style={{ ...tdS, fontWeight: 900, fontSize: 18, color: report.accentColor }}>862.50 ر.س</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ width: 80, height: 80, background: '#000', borderRadius: 6, padding: 6, display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1, flexShrink: 0 }}>
+                  {Array.from({ length: 36 }).map((_, i) => (
+                    <div key={i} style={{ background: [0,1,2,5,6,12,13,14,17,18,24,25,26,29,30,7,11,23,31,35,8,9,10,32,33,34].includes(i) ? '#fff' : '#000', borderRadius: 1 }} />
+                  ))}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: report.accentColor, marginBottom: 4 }}>QR Code — ZATCA Fatoora Phase 2</div>
+                  <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.7 }}>
+                    رقم الفاتورة: <span style={{ fontFamily: 'monospace' }}>INV-2026-04-A-001</span><br />
+                    رقم الدفعة: <span style={{ fontFamily: 'monospace' }}>BATCH-2026-04-A</span><br />
+                    تاريخ التوريد: {today}
+                  </div>
+                </div>
+              </div>
+              <div style={{ background: `${report.accentColor}08`, border: `1px solid ${report.accentColor}25`, borderRadius: 8, padding: 12, fontSize: 12, color: C.inkSoft, lineHeight: 1.7 }}>
+                💡 يُربط BATCH-ID تلقائياً بفاتورة Fatoora عند الحصاد من خلال iGarden Smart OS. يقتصر دور ZATCA على الفوترة الإلكترونية — ليس منصة تتبع غذائي.
+              </div>
+            </div>
+          )}
+
+          {/* SHA + توقيعات */}
+          <div style={{ marginTop: 18, borderTop: `1px dashed ${C.border}`, paddingTop: 14 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, fontSize: 11, color: C.muted, marginBottom: 12, background: C.creamDark, padding: '8px 12px', borderRadius: 6 }}>
+              <span><strong>SHA-256 (mock):</strong> <span style={{ fontFamily: 'monospace' }}>{sha}</span></span>
+              <span><strong>رابط التحقق:</strong> <span style={{ fontFamily: 'monospace', color: report.accentColor }}>verify.igarden.sa/{reportId}</span></span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              {['أُعدّ بواسطة النظام', 'مراجع من المشغّل', 'ختم المنشأة'].map(role => (
+                <div key={role} style={{ textAlign: 'center', fontSize: 11 }}>
+                  <div style={{ color: C.muted, marginBottom: 24 }}>{role}</div>
+                  <div style={{ borderBottom: `1px solid ${C.ink}`, marginBottom: 4 }} />
+                  <div style={{ color: C.muted }}>التاريخ: {today}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* المراجع */}
+          <div style={{ marginTop: 14, padding: '10px 14px', background: `${C.lime}08`, border: `1px dashed ${C.lime}60`, borderRadius: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 11, color: C.forest, marginBottom: 6 }}>المراجع التنظيمية:</div>
+            {REGULATORY_REFS.map(ref => (
+              <div key={ref.code} style={{ fontSize: 10, color: C.inkSoft, marginBottom: 3 }}>
+                <strong>{ref.code}</strong> — {ref.fullName} ({ref.authority})
+              </div>
+            ))}
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ marginTop: 12, padding: '10px 14px', background: '#fffbf0', border: `1px solid ${C.warn}30`, borderRadius: 8, fontSize: 10, color: C.inkSoft, lineHeight: 1.8 }}>
+            <strong>* ملاحظة: </strong>{DISCLAIMER_TEXT}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 3: Audit Trail ───
+function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAuditZone, auditType, setAuditType, auditPeriod, setAuditPeriod, downloadAuditCSV }) {
+  const sel: React.CSSProperties = { padding: '8px 10px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 12, background: '#fff', cursor: 'pointer' };
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, marginBottom: 4 }}>المنطقة</div>
+            <select value={auditZone} onChange={e => setAuditZone(e.target.value)} style={sel}>
+              <option value="all">كل المناطق</option>
+              {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, marginBottom: 4 }}>نوع الحدث</div>
+            <select value={auditType} onChange={e => setAuditType(e.target.value)} style={sel}>
+              <option value="all">كل الأنواع</option>
+              <option value="قراءة">قراءة</option>
+              <option value="تدخل تلقائي">تدخل تلقائي</option>
+              <option value="تجاوز يدوي">تجاوز يدوي</option>
+            </select>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.forest, marginBottom: 4 }}>الفترة</div>
+            <select value={auditPeriod} onChange={e => setAuditPeriod(e.target.value)} style={sel}>
+              <option value="24h">آخر 24 ساعة</option>
+              <option value="7d">آخر 7 أيام</option>
+              <option value="30d">آخر 30 يوم</option>
+            </select>
+          </div>
+          <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end' }}>
+            <button onClick={downloadAuditCSV} style={{ padding: '8px 14px', background: C.forest, color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Download size={13} /> تصدير CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontWeight: 700, color: C.forest, fontSize: 14 }}>سجل المراجعة والأحداث</div>
+          <Badge color={C.lime} text={`${filteredAudit.length} سجل`} />
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? 10 : 12 }}>
+            <thead>
+              <tr style={{ background: C.creamDark }}>
+                {['الوقت (UTC)', 'المنطقة', 'النوع', 'القيمة', 'المشغّل', 'الختم'].map(h => (
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: C.forest, borderBottom: `2px solid ${C.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAudit.slice(0, 50).map((entry: AuditEntry, i: number) => {
+                const tc = entry.type === 'تجاوز يدوي' ? '#F59E0B' : entry.type === 'تدخل تلقائي' ? '#0EA5E9' : C.muted;
+                return (
+                  <tr key={entry.id} style={{ background: i % 2 === 0 ? '#fff' : C.cream, borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontSize: 10, color: C.inkSoft, whiteSpace: 'nowrap' }}>{entry.timestamp.slice(0, 16).replace('T', ' ')}</td>
+                    <td style={{ padding: '7px 12px', fontWeight: 600, color: C.forest, whiteSpace: 'nowrap' }}>{entry.zone}</td>
+                    <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 7px', borderRadius: 10, background: tc + '20', color: tc, fontWeight: 700, fontSize: 10 }}>
+                        {entry.isOverride ? '✋' : entry.type === 'تدخل تلقائي' ? '🤖' : '📊'} {entry.type}
+                      </span>
+                    </td>
+                    <td style={{ padding: '7px 12px', color: C.inkSoft, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.value}</td>
+                    <td style={{ padding: '7px 12px', fontWeight: 600, color: C.ink, whiteSpace: 'nowrap' }}>{entry.operator}</td>
+                    <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>{entry.sha}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filteredAudit.length === 0 && (
+            <div style={{ padding: 32, textAlign: 'center', color: C.muted, fontSize: 13 }}>لا توجد سجلات تطابق الفلتر المحدد</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 4: GAP Traceability ───
+function GAPTraceability({ isMobile }) {
+  return (
+    <div>
+      {/* Batch Header */}
+      <div style={{ background: '#fff', border: `2px solid ${C.lime}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+          <div>
+            <div style={{ fontWeight: 900, color: C.forest, fontSize: isMobile ? 16 : 20 }}>BATCH-2026-04-A</div>
+            <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 4 }}>طماطم · محمية A — جدة · مساحة 200 م²</div>
+          </div>
+          <Badge color={C.lime} text="🌿 Saudi GAP Tracked" />
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[
+            { label: 'المحصول',    value: '🍅 طماطم'  },
+            { label: 'المرحلة',    value: '🌸 الإزهار' },
+            { label: 'صفر مبيدات', value: '✅'         },
+            { label: 'SFDA.FD 382', value: '✅ ممتثل' },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: C.creamDark, padding: '6px 12px', borderRadius: 8, fontSize: 11 }}>
+              <span style={{ color: C.muted }}>{label}: </span>
+              <span style={{ fontWeight: 700, color: C.forest }}>{value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 20 }}>
+        <h3 style={{ margin: '0 0 20px', color: C.forest, fontSize: 15, fontWeight: 700 }}>رحلة الدفعة — Saudi GAP Timeline</h3>
+        <div style={{ position: 'relative', paddingRight: 28 }}>
+          <div style={{ position: 'absolute', right: 11, top: 20, bottom: 20, width: 2, background: C.border }} />
+          {GAP_TIMELINE_STEPS.map((step, i) => {
+            const done    = step.status === 'done';
+            const current = step.status === 'current';
+            const dc      = done ? C.ok : current ? C.lime : C.border;
+            return (
+              <div key={i} style={{ display: 'flex', gap: 16, marginBottom: i < GAP_TIMELINE_STEPS.length - 1 ? 22 : 0 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: done ? C.ok + '25' : current ? C.lime + '25' : C.creamDark, border: `2px solid ${dc}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0, zIndex: 1, marginTop: 2 }}>
+                  {step.emoji}
+                </div>
+                <div style={{ flex: 1, paddingBottom: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: done ? C.forest : current ? C.lime : C.muted, fontSize: 14 }}>{step.title}</span>
+                      <span style={{ fontSize: 11, color: current ? C.lime : C.muted, fontWeight: current ? 700 : 400 }}>{step.subtitle}</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: C.muted, fontFamily: 'monospace' }}>{step.date}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 4, lineHeight: 1.6 }}>{step.detail}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* QR + Trace Link */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
+        <h3 style={{ margin: '0 0 14px', color: C.forest, fontSize: 14, fontWeight: 700 }}>QR تتبع الدفعة</h3>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ width: 96, height: 96, background: '#000', borderRadius: 8, padding: 8, display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1.5, flexShrink: 0 }}>
+            {Array.from({ length: 36 }).map((_, i) => (
+              <div key={i} style={{ background: [0,1,2,3,4,5,7,11,12,13,14,17,19,20,22,23,24,25,26,27,28,29,31,35].includes(i) ? '#fff' : '#000', borderRadius: 1 }} />
+            ))}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, color: C.forest, marginBottom: 6, fontSize: 14 }}>trace.igarden.sa/BATCH-2026-04-A</div>
+            <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.7 }}>
+              امسح الرمز للوصول لسجل الدفعة الكامل:<br />
+              تاريخ الزراعة · قراءات الحساسات · شهادة GAP · فاتورة ZATCA
+            </div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <Badge color={C.ok}    text="✅ متحقق — Saudi GAP" />
+              <Badge color="#0EA5E9" text="📋 SFDA.FD 382/2018"  />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Regulatory References Footer */}
+      <div style={{ padding: 14, background: C.creamDark, borderRadius: 10 }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: C.forest, marginBottom: 10 }}>المراجع التنظيمية المعتمدة</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+          {REGULATORY_REFS.map(ref => (
+            <div key={ref.code} style={{ background: '#fff', padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 11, color: C.forest }}>{ref.code}</div>
+              <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 2 }}>{ref.authority}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
