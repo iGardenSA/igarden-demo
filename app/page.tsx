@@ -359,6 +359,16 @@ export default function DemoPage() {
         </div>
       </nav>
 
+      {/* ═══ Transparency Banner ═══ */}
+      <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '9px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, fontSize: isMobile ? 11 : 12, color: '#92400E', fontWeight: 500, lineHeight: 1.5 }}>
+        <span>🔬 نموذج ديمو — يعرض معمارية حقيقية باستخدام بيانات محاكاة · ليس بديلاً عن شهادة Saudi GAP أو التفتيش الرسمي من جهة معتمدة</span>
+        <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700 }}>Demo Mode</span>
+          <span style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: '#1E40AF' }}>Simulated Readings</span>
+          <span style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: '#166534' }}>Not a Certification Substitute</span>
+        </span>
+      </div>
+
       {/* ═══ المحتوى ═══ */}
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: isMobile ? 14 : 24 }}>
         {activeTab === 'live' && <LiveDashboard isMobile={isMobile} zones={zones} setZones={setZones} selectedZoneId={selectedZoneId} setSelectedZoneId={setSelectedZoneId} liveReadings={liveReadings} overrides={overrides} setOverrides={setOverrides} />}
@@ -436,6 +446,12 @@ function LiveDashboard({ zones, setZones, selectedZoneId, setSelectedZoneId, liv
 
   return (
     <div>
+      {/* Demo Badges Row */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', padding: '4px 10px', borderRadius: 20 }}>🔬 Demo Mode</span>
+        <span style={{ fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE', padding: '4px 10px', borderRadius: 20 }}>📊 Simulated Readings</span>
+        <span style={{ fontSize: 11, color: C.muted, marginRight: 'auto' }}>القراءات تُحدَّث كل 2 ثانية — بيانات محاكاة للعرض التجريبي</span>
+      </div>
       {/* Zone Selector */}
       <div style={{ display: 'flex', gap: isMobile ? 8 : 12, marginBottom: 20, flexWrap: 'wrap' }}>
         {zones.map(z => {
@@ -1289,7 +1305,7 @@ const GAP_TIMELINE_STEPS = [
 ];
 
 function ComplianceTab({ isMobile, historicalData, zones }) {
-  const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability'>('scores');
+  const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits'>('scores');
   const [reportModal, setReportModal] = useState<string | null>(null);
   const [auditZone, setAuditZone]     = useState('all');
   const [auditType, setAuditType]     = useState('all');
@@ -1300,6 +1316,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
     { id: 'reports',      label: '📄 مكتبة التقارير',  icon: FileText    },
     { id: 'audit',        label: '🕐 سجل المراجعة',    icon: Clock       },
     { id: 'traceability', label: '🔗 تتبع الدفعة',     icon: Leaf        },
+    { id: 'limits',       label: '🏛️ حدود النظام',    icon: ShieldCheck },
   ];
 
   const allAudit: AuditEntry[] = useMemo(
@@ -1382,6 +1399,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
         />
       )}
       {section === 'traceability' && <GAPTraceability    isMobile={isMobile} />}
+      {section === 'limits'       && <SystemLimitsSection isMobile={isMobile} />}
 
       {/* Disclaimer */}
       <div style={{ marginTop: 24, padding: '12px 16px', background: `${C.lime}08`, border: `1px dashed ${C.lime}60`, borderRadius: 10, fontSize: 11, color: C.inkSoft, lineHeight: 1.8 }}>
@@ -1935,6 +1953,145 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Section 5: System Limits ───
+function SystemLimitsSection({ isMobile }) {
+  const cardS: React.CSSProperties = { background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 16 : 20 };
+  const labelS: React.CSSProperties = { fontWeight: 800, fontSize: 14, marginBottom: 14 };
+
+  const DOES: string[]     = [
+    'يوثّق قراءات الحساسات (pH · EC · حرارة · رطوبة · CO₂) في الوقت الفعلي',
+    'يسجّل أوامر الري والتسميد الآلي ويحتفظ بسجل تدقيق كامل',
+    'يولّد تقارير شهرية قابلة للمراجعة والتصدير (PDF / CSV)',
+    'يساعد في تنظيم ملف جاهزية Saudi GAP وتتبع الدفعات',
+    'يربط Batch ID بمرجع الفاتورة الإلكترونية عند إتمام البيع',
+  ];
+  const DOESNOT: string[]  = [
+    'لا يمنح شهادة Saudi GAP — الشهادة تصدر من جهة معتمدة عبر منصة NAAMA',
+    'لا يستبدل التفتيش الرسمي من مفتّش زراعي معتمد',
+    'لا يقيس متبقيات المبيدات MRL مخبرياً — يتطلب مختبراً معتمداً من SFDA',
+    'لا يُرسل بيانات لمنصات حكومية دون تكامل API رسمي ومعتمد',
+    'لا يتحدث باسم وزارة البيئة والمياه والزراعة أو أي جهة رسمية',
+  ];
+
+  const GAP_CHECKLIST = [
+    { item: 'جودة مياه الري',          status: 'جاهز',               note: 'pH وEC مراقَبان بالوقت الفعلي' },
+    { item: 'حفظ السجلات',             status: 'جاهز جزئياً',        note: 'قراءات وأوامر موثّقة — تصدير PDF قيد التطوير' },
+    { item: 'تتبع الدفعات',            status: 'جاهز جزئياً',        note: 'Batch ID مربوط بالمحصول والمنطقة' },
+    { item: 'تقييم المخاطر',           status: 'قيد الإعداد',        note: 'نموذج أولي — يحتاج اعتمادًا داخليًا' },
+    { item: 'متبقيات المبيدات MRL',    status: 'يتطلب مختبر معتمد', note: 'النظام لا يقيس MRL — يُرفق تقرير المختبر يدوياً' },
+    { item: 'سجل المدخلات الزراعية',   status: 'قيد التطوير',        note: 'Sprint 2' },
+    { item: 'سلامة العمال',            status: 'قيد التطوير',        note: 'Sprint 3' },
+    { item: 'إدارة المخلفات',          status: 'قيد التطوير',        note: 'Sprint 3' },
+  ];
+
+  const statusColor = (s: string) => {
+    if (s === 'جاهز')               return { bg: '#ECFDF5', color: C.ok,      border: '#A7F3D0' };
+    if (s === 'جاهز جزئياً')        return { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' };
+    if (s === 'قيد الإعداد')        return { bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' };
+    if (s === 'يتطلب مختبر معتمد') return { bg: '#FFF7ED', color: '#C2410C', border: '#FDBA74' };
+    return { bg: C.creamDark, color: C.muted, border: C.border };
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ما يفعله / ما لا يفعله */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
+        <div style={{ ...cardS, borderTop: `4px solid ${C.ok}` }}>
+          <div style={{ ...labelS, color: C.ok }}>✅ ما يفعله النظام</div>
+          {DOES.map((item, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10, fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>
+              <span style={{ color: C.ok, flexShrink: 0, marginTop: 2 }}>✓</span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...cardS, borderTop: `4px solid ${C.danger}` }}>
+          <div style={{ ...labelS, color: C.danger }}>🚫 ما لا يفعله النظام</div>
+          {DOESNOT.map((item, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10, fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>
+              <span style={{ color: C.danger, flexShrink: 0, marginTop: 2 }}>✗</span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Saudi GAP Readiness Checklist */}
+      <div style={cardS}>
+        <div style={{ ...labelS, color: C.forest }}>📋 جاهزية Saudi GAP — حالة كل بند</div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: C.creamDark }}>
+                {['بند الجاهزية', 'الحالة', 'ملاحظة'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: C.forest, border: `1px solid ${C.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {GAP_CHECKLIST.map(({ item, status, note }, i) => {
+                const sc = statusColor(status);
+                return (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                    <td style={{ padding: '8px 12px', border: `1px solid ${C.border}`, fontWeight: 600 }}>{item}</td>
+                    <td style={{ padding: '8px 12px', border: `1px solid ${C.border}` }}>
+                      <span style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{status}</span>
+                    </td>
+                    <td style={{ padding: '8px 12px', border: `1px solid ${C.border}`, color: C.inkSoft, fontSize: 12 }}>{note}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* NAAMA Integration Status */}
+      <div style={{ ...cardS, borderTop: `4px solid #2563EB` }}>
+        <div style={{ ...labelS, color: '#2563EB' }}>🏛️ حالة التكامل مع المنصات الحكومية</div>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+          {[
+            { name: 'NAAMA (منصة نعمة)', current: 'تصدير يدوي للتقارير', next: 'Mapping جاهز للحقول', future: 'API مباشر عند توفر واجهة رسمية', color: '#2563EB' },
+            { name: 'SFDA', current: 'توثيق المدخلات فقط', next: 'ربط سجل المبيدات', future: 'تقرير MRL مرفق من المختبر', color: '#DC2626' },
+            { name: 'ZATCA Fatoora', current: 'ربط Batch ID بالفاتورة', next: 'تكامل QR تلقائي', future: 'مرحلة 2 مكتملة عند الإنتاج', color: '#7C3AED' },
+          ].map(({ name, current, next, future, color }) => (
+            <div key={name} style={{ background: C.creamDark, borderRadius: 8, padding: 14, borderRight: `4px solid ${color}` }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color, marginBottom: 10 }}>{name}</div>
+              {[['الحالة الحالية', current, C.inkSoft], ['المرحلة القادمة', next, '#2563EB'], ['المستقبل', future, C.muted]].map(([label, val, clr]) => (
+                <div key={label as string} style={{ display: 'flex', gap: 6, marginBottom: 6, fontSize: 12 }}>
+                  <span style={{ color: C.muted, flexShrink: 0, minWidth: 100 }}>{label as string}:</span>
+                  <span style={{ color: clr as string, fontWeight: 500 }}>{val as string}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 12, padding: '10px 14px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 12, color: '#1E40AF', lineHeight: 1.7 }}>
+          <strong>ملاحظة: </strong>لا يوجد حالياً ربط مباشر مع أي منصة حكومية. يستخدم النظام حقولاً متوافقة مع متطلبات NAAMA وZATCA جاهزة للتكامل الرسمي عند توفّر API معتمد.
+        </div>
+      </div>
+
+      {/* SFDA / MRL Disclaimer */}
+      <div style={{ background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 10, padding: '14px 18px' }}>
+        <div style={{ fontWeight: 800, fontSize: 13, color: '#C2410C', marginBottom: 8 }}>⚗️ تنبيه مهم — SFDA ومتبقيات المبيدات (MRL)</div>
+        <div style={{ fontSize: 13, color: '#7C2D12', lineHeight: 1.75 }}>
+          نظام iGarden يوثّق ظروف الإنتاج والمدخلات والقراءات التشغيلية. <strong>لا يقيس النظام متبقيات المبيدات MRL مخبرياً</strong>، ولا يُغني عن شهادة مختبر معتمد من SFDA عند الحاجة. وفقاً للائحة SFDA.FD 382/2018، يجب إجراء اختبار MRL على المنتج النهائي في مختبر معتمد.
+        </div>
+      </div>
+
+      {/* ZATCA Disclaimer */}
+      <div style={{ background: '#FAF5FF', border: '1px solid #E9D5FF', borderRadius: 10, padding: '14px 18px' }}>
+        <div style={{ fontWeight: 800, fontSize: 13, color: '#7C3AED', marginBottom: 8 }}>🧾 توضيح دور ZATCA في هذا النموذج</div>
+        <div style={{ fontSize: 13, color: '#4C1D95', lineHeight: 1.75 }}>
+          دور ZATCA في هذا النموذج يقتصر على <strong>ربط دفعة الحصاد (Batch ID) بالفاتورة الإلكترونية</strong> ومرجع البيع عند توفّره. لا تُستخدم ZATCA كبديل عن متطلبات سلامة الغذاء أو شهادة Saudi GAP، ولا تُعد منصة تتبع غذائي.
+        </div>
+      </div>
+
     </div>
   );
 }
