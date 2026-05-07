@@ -1366,31 +1366,31 @@ const DATA_QUALITY_METRICS = [
 ];
 
 // ─── Sprint 4B Constants ───
-const HASH_CHAIN_EVENTS = (() => {
-  const base = [
-    { id: 'AUD-2026-0001', ts: '2026-05-07 10:42', action: 'Irrigation cycle triggered',      actor: 'System'   },
-    { id: 'AUD-2026-0002', ts: '2026-05-07 11:10', action: 'pH target adjusted',              actor: 'Operator' },
-    { id: 'AUD-2026-0003', ts: '2026-05-07 12:05', action: 'Nutrient dosing completed',       actor: 'System'   },
-    { id: 'AUD-2026-0004', ts: '2026-05-07 13:30', action: 'Sensor calibration logged',       actor: 'Technician'},
-    { id: 'AUD-2026-0005', ts: '2026-05-07 14:55', action: 'Manual override: EC threshold',   actor: 'Operator' },
-    { id: 'AUD-2026-0006', ts: '2026-05-07 16:20', action: 'Batch record updated: BATCH-001', actor: 'Operator' },
-    { id: 'AUD-2026-0007', ts: '2026-05-07 17:45', action: 'Daily compliance check passed',   actor: 'System'   },
-    { id: 'AUD-2026-0008', ts: '2026-05-07 18:00', action: 'Report draft generated',          actor: 'System'   },
-  ];
-  const chain: { id: string; ts: string; action: string; actor: string; previousHash: string; eventHash: string; chainStatus: string }[] = [];
-  base.forEach((e, i) => {
-    const prev = i === 0 ? 'GENESIS' : chain[i - 1].eventHash;
-    chain.push({ ...e, previousHash: prev, eventHash: mockSHA(e.id + prev), chainStatus: 'Valid' });
-  });
-  return chain;
-})();
+
+// Derive chain from ENHANCED_AUDIT_EVENTS so they share the same source
+const AUDIT_CHAIN_EVENTS = ENHANCED_AUDIT_EVENTS.map((e, i) => ({
+  ...e,
+  previousHash: i === 0 ? 'GENESIS' : ENHANCED_AUDIT_EVENTS[i - 1].hash,
+  eventHash:    e.hash,
+  chainStatus:  'Valid',
+}));
+
+const AUDIT_CHAIN_SUMMARY = {
+  verificationMode: 'Demo hash chain',
+  chainStatus:      'Valid in demo',
+  eventsChecked:    ENHANCED_AUDIT_EVENTS.length,
+  brokenLinks:      0,
+  lastEventHash:    ENHANCED_AUDIT_EVENTS[ENHANCED_AUDIT_EVENTS.length - 1]?.hash ?? 'N/A',
+  disclaimer:       'Tamper-evident structure shown for demo only. Production requires append-only backend storage and restricted deletion controls.',
+};
 
 const AUDIT_VERSIONING = [
-  { object: 'Audit Event',       versioningRule: 'Never edit; add a correction event referencing original ID', demoStatus: 'Modeled' },
-  { object: 'Compliance Report', versioningRule: 'New export creates new reportId and timestamp',              demoStatus: 'Active'  },
-  { object: 'Batch Record',      versioningRule: 'Changes create history entries — original retained',        demoStatus: 'Planned' },
-  { object: 'Sensor Reading',    versioningRule: 'Flagged as outlier; original value preserved in audit log', demoStatus: 'Modeled' },
-  { object: 'Calibration Log',   versioningRule: 'New calibration entry does not overwrite previous',        demoStatus: 'Modeled' },
+  { object: 'Audit Event',       ar: 'حدث تدقيق',      versioningRule: 'Never edit; add a correction event referencing original ID', demoStatus: 'Modeled' },
+  { object: 'Compliance Report', ar: 'تقرير امتثال',   versioningRule: 'New export creates new reportId and timestamp',              demoStatus: 'Active'  },
+  { object: 'Batch Record',      ar: 'سجل دفعة',       versioningRule: 'Changes create history entries — original retained',        demoStatus: 'Planned' },
+  { object: 'Input Usage Log',   ar: 'سجل المدخلات',   versioningRule: 'Corrections are logged as new entries',                     demoStatus: 'Modeled' },
+  { object: 'Sensor Reading',    ar: 'قراءة حساس',     versioningRule: 'Flagged as outlier; original value preserved in audit log', demoStatus: 'Modeled' },
+  { object: 'Calibration Log',   ar: 'سجل المعايرة',   versioningRule: 'New calibration entry does not overwrite previous',        demoStatus: 'Modeled' },
 ];
 
 // ─── Sprint 4A Constants ───
@@ -1803,17 +1803,17 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
     if (y > 220) { doc.addPage(); y = 20; }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
     doc.text('Audit Chain Integrity — Tamper-evident Demo Structure', mg, y); y += 4;
-    const lastChain = HASH_CHAIN_EVENTS[HASH_CHAIN_EVENTS.length - 1];
+    const cs = AUDIT_CHAIN_SUMMARY;
     autoTable(doc, {
       startY: y,
-      head: [['Field', 'Value']],
+      head: [['Metric', 'Value']],
       body: [
-        ['Verification Mode', 'Demo hash chain'],
-        ['Events Checked',    String(HASH_CHAIN_EVENTS.length)],
-        ['Broken Links',      '0'],
-        ['Last Event Hash',   lastChain.eventHash],
-        ['Chain Status',      'Valid in demo'],
-        ['Disclaimer',        'Tamper-evident structure shown for demo only. Not an immutable backend audit trail.'],
+        ['Verification Mode', cs.verificationMode],
+        ['Chain Status',      cs.chainStatus],
+        ['Events Checked',    String(cs.eventsChecked)],
+        ['Broken Links',      String(cs.brokenLinks)],
+        ['Last Event Hash',   cs.lastEventHash],
+        ['Disclaimer',        cs.disclaimer],
       ],
       theme: 'plain',
       headStyles: { fillColor: [15,61,46], textColor: 255, fontSize: 8, fontStyle: 'bold' },
@@ -2797,32 +2797,28 @@ function SystemLimitsSection({ isMobile }) {
 
 // ─── Sprint 4B: Audit Chain Integrity Panel ───
 function AuditChainIntegrityPanel({ isMobile }) {
-  const lastEvent = HASH_CHAIN_EVENTS[HASH_CHAIN_EVENTS.length - 1];
-  const brokenCount = HASH_CHAIN_EVENTS.filter(e => e.chainStatus !== 'Valid').length;
+  const s = AUDIT_CHAIN_SUMMARY;
   const thS: React.CSSProperties = { padding: '8px 10px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 11, whiteSpace: 'nowrap' as const };
   const tdS: React.CSSProperties = { padding: '7px 10px', border: `1px solid ${C.border}`, fontSize: 11 };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Status summary cards */}
+      {/* Summary header */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ background: C.forest, color: '#fff', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ background: C.forest, color: '#fff', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' as const, gap: 8 }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 14 }}>سلامة سلسلة التدقيق — Audit Chain Integrity</div>
             <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>بنية ديمو قابلة لكشف العبث · Tamper-evident demo structure</div>
           </div>
-          <span style={{ padding: '4px 12px', borderRadius: 20, background: '#ECFDF5', color: C.ok, fontWeight: 800, fontSize: 12, border: '1px solid #A7F3D0' }}>
-            ✅ Chain Valid in Demo
-          </span>
+          <span style={{ padding: '4px 12px', borderRadius: 20, background: '#ECFDF5', color: C.ok, fontWeight: 800, fontSize: 12, border: '1px solid #A7F3D0' }}>✅ {s.chainStatus}</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 0 }}>
           {[
-            { label: 'Chain Status',      value: 'Valid in demo',            color: C.ok      },
-            { label: 'Events Checked',    value: String(HASH_CHAIN_EVENTS.length), color: '#2563EB' },
-            { label: 'Broken Links',      value: String(brokenCount),        color: brokenCount > 0 ? C.danger : C.ok },
-            { label: 'Last Event Hash',   value: `${lastEvent.eventHash.slice(0,8)}…`, color: C.inkSoft },
-            { label: 'Verification Mode', value: 'Demo hash chain',          color: C.warn    },
+            { label: 'Verification Mode', value: s.verificationMode,                         color: C.warn    },
+            { label: 'Events Checked',    value: String(s.eventsChecked),                    color: '#2563EB' },
+            { label: 'Broken Links',      value: String(s.brokenLinks),                      color: s.brokenLinks > 0 ? C.danger : C.ok },
+            { label: 'Last Event Hash',   value: `${s.lastEventHash.slice(0,8)}…`,            color: C.inkSoft },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ padding: '14px 16px', borderRight: `1px solid ${C.border}`, borderTop: `1px solid ${C.border}` }}>
               <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{label}</div>
@@ -2831,29 +2827,28 @@ function AuditChainIntegrityPanel({ isMobile }) {
           ))}
         </div>
         <div style={{ padding: '10px 16px', background: '#FFFBEB', borderTop: `1px solid #FDE68A`, fontSize: 11, color: '#92400E', lineHeight: 1.7 }}>
-          <strong>ملاحظة: </strong>
-          هذا القسم يوضح بنية كشف العبث في بيئة الديمو. لا يعني وجود سجل backend غير قابل للتعديل بعد. عند الانتقال للإنتاج، يجب تطبيق تخزين append-only وصلاحيات حذف مقيدة ومراجعة دورية.
+          <strong>ملاحظة: </strong>{s.disclaimer}
         </div>
       </div>
 
-      {/* Hash chain table */}
+      {/* Hash chain table — derived from AUDIT_CHAIN_EVENTS (same source as ENHANCED_AUDIT_EVENTS) */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, background: C.creamDark }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: C.forest }}>سلسلة Hash المترابطة — Linked Hash Chain</div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>كل حدث يحمل hash الحدث السابق · Each event carries the previous event's hash</div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>كل حدث يحمل previousHash من الحدث السابق · Each event carries the previous event's hash</div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-            <thead><tr>{['Event ID','Timestamp','Action','Actor','Previous Hash','Event Hash','Status'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+            <thead><tr>{['Event ID','الوقت','المشغّل','الإجراء','Previous Hash','Event Hash','Status'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
             <tbody>
-              {HASH_CHAIN_EVENTS.map((e, i) => (
+              {AUDIT_CHAIN_EVENTS.map((e, i) => (
                 <tr key={e.id} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
                   <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: C.inkSoft }}>{e.id}</td>
                   <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, whiteSpace: 'nowrap' as const }}>{e.ts}</td>
-                  <td style={{ ...tdS, color: C.ink }}>{e.action}</td>
-                  <td style={tdS}><span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, background: e.actor === 'System' ? '#EFF6FF' : e.actor === 'Technician' ? '#F5F3FF' : '#FFFBEB', color: e.actor === 'System' ? '#1D4ED8' : e.actor === 'Technician' ? '#7C3AED' : '#92400E' }}>{e.actor === 'System' ? '🤖' : e.actor === 'Technician' ? '🔧' : '✋'} {e.actor}</span></td>
-                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: e.previousHash === 'GENESIS' ? C.lime : C.muted }}>{e.previousHash === 'GENESIS' ? '◆ GENESIS' : e.previousHash.slice(0,12) + '…'}</td>
-                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: '#2563EB' }}>{e.eventHash}</td>
+                  <td style={tdS}><span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, background: e.actor === 'System' ? '#EFF6FF' : '#FFFBEB', color: e.actor === 'System' ? '#1D4ED8' : '#92400E' }}>{e.actor === 'System' ? '🤖' : '✋'} {e.actor}</span></td>
+                  <td style={{ ...tdS, color: C.ink, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{e.action}</td>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: e.previousHash === 'GENESIS' ? C.lime : C.muted, whiteSpace: 'nowrap' as const }}>{e.previousHash === 'GENESIS' ? '◆ GENESIS' : e.previousHash.slice(0, 12) + '…'}</td>
+                  <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: '#2563EB', whiteSpace: 'nowrap' as const }}>{e.eventHash}</td>
                   <td style={tdS}><span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, background: '#ECFDF5', color: C.ok, border: '1px solid #A7F3D0' }}>✅ {e.chainStatus}</span></td>
                 </tr>
               ))}
@@ -2861,26 +2856,51 @@ function AuditChainIntegrityPanel({ isMobile }) {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Append-only model */}
+// ─── Sprint 4B: Append-only Model (standalone) ───
+function AppendOnlyModelSection({ isMobile }) {
+  const thS: React.CSSProperties = { padding: '9px 11px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 11 };
+  const tdS: React.CSSProperties = { padding: '7px 11px', border: `1px solid ${C.border}`, fontSize: 11 };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {/* Three principle cards */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, background: C.creamDark }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: C.forest }}>نموذج Append-only — Append-only Audit Model</div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>السجل لا يُعدَّل، بل يُضاف إليه فقط</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: C.forest }}>Append-only Audit Model — نموذج السجل غير القابل للتعديل</div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>النموذج المقترح للإنتاج: لا يتم تعديل السجل القديم، بل تُضاف أحداث تصحيحية جديدة</div>
         </div>
-        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ padding: 16, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
           {[
-            { wrong: 'AUD-0002 was edited.',                               correct: 'AUD-0002 remains unchanged.\nAUD-0009 added: Correction for AUD-0002.' },
-            { wrong: 'Sensor reading deleted.',                            correct: 'Reading flagged as outlier; original value preserved with exclusion reason.' },
-            { wrong: 'Report revised by overwriting previous file.',       correct: 'New report exported with new reportId and timestamp; previous version retained.' },
+            { title: 'لا يحدث ❌',         bg: '#FEF2F2', border: '#FECACA', color: C.danger, text: 'تعديل حدث قديم مباشرة أو حذف قراءة من السجل.' },
+            { title: 'يحدث بدلاً من ذلك ✅', bg: '#ECFDF5', border: '#A7F3D0', color: C.ok,    text: 'إضافة حدث تصحيحي جديد يشير إلى الحدث الأصلي مع السبب والوقت والمستخدم.' },
+            { title: 'للتقارير 📄',          bg: '#EFF6FF', border: '#BFDBFE', color: '#1D4ED8', text: 'كل تصدير يولد Report ID وtimestamp جديدين، ولا يستبدل التقرير السابق.' },
+          ].map(({ title, bg, border, color, text }) => (
+            <div key={title} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color, marginBottom: 8 }}>{title}</div>
+              <div style={{ fontSize: 12, color, lineHeight: 1.65 }}>{text}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Wrong / Correct examples */}
+        <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[
+            { wrong: 'AUD-0002 was edited.',                                correct: 'AUD-0002 remains unchanged.\nAUD-0009 added: Correction for AUD-0002.' },
+            { wrong: 'Sensor reading deleted.',                             correct: 'Reading flagged as outlier; original preserved with exclusion reason.' },
+            { wrong: 'Report revised by overwriting previous file.',        correct: 'New report: new reportId + timestamp. Previous version retained.' },
           ].map(({ wrong, correct }, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.danger, marginBottom: 4 }}>❌ Wrong</div>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '9px 12px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.danger, marginBottom: 3 }}>❌ Wrong</div>
                 <div style={{ fontFamily: 'monospace', fontSize: 11, color: C.danger, lineHeight: 1.6, whiteSpace: 'pre-line' }}>{wrong}</div>
               </div>
-              <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 8, padding: '10px 12px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.ok, marginBottom: 4 }}>✅ Correct</div>
+              <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 8, padding: '9px 12px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.ok, marginBottom: 3 }}>✅ Correct</div>
                 <div style={{ fontFamily: 'monospace', fontSize: 11, color: C.ok, lineHeight: 1.6, whiteSpace: 'pre-line' }}>{correct}</div>
               </div>
             </div>
@@ -2888,7 +2908,7 @@ function AuditChainIntegrityPanel({ isMobile }) {
         </div>
       </div>
 
-      {/* Audit Versioning */}
+      {/* Audit Versioning table */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, background: C.creamDark }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: C.forest }}>Audit Versioning — إصدارات السجل</div>
@@ -2896,14 +2916,15 @@ function AuditChainIntegrityPanel({ isMobile }) {
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>{['الكيان','قاعدة الإصدار','حالة الديمو'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Object','العنصر','Versioning Rule','Demo Status'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
             <tbody>
               {AUDIT_VERSIONING.map((r, i) => {
                 const sc = r.demoStatus === 'Active' ? { bg: '#ECFDF5', color: C.ok } : r.demoStatus === 'Modeled' ? { bg: '#EFF6FF', color: '#2563EB' } : { bg: '#FFFBEB', color: C.warn };
                 return (
                   <tr key={r.object} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
                     <td style={{ ...tdS, fontWeight: 700, color: C.ink }}>{r.object}</td>
-                    <td style={{ ...tdS, color: C.inkSoft }}>{r.versioningRule}</td>
+                    <td style={{ ...tdS, color: C.inkSoft }}>{r.ar}</td>
+                    <td style={{ ...tdS, color: C.inkSoft, fontSize: 11 }}>{r.versioningRule}</td>
                     <td style={tdS}><span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color }}>{r.demoStatus}</span></td>
                   </tr>
                 );
@@ -2912,7 +2933,7 @@ function AuditChainIntegrityPanel({ isMobile }) {
           </table>
         </div>
         <div style={{ padding: '10px 16px', background: '#F8FDF9', borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.inkSoft, lineHeight: 1.6 }}>
-          💡 "Modeled" = البنية موجودة في الديمو كنمط للإنتاج · "Active" = يعمل فعلاً في هذا الديمو · "Planned" = مدرج في الخارطة التقنية
+          💡 "Modeled" = البنية موجودة كنمط للإنتاج · "Active" = يعمل فعلاً في هذا الديمو · "Planned" = مدرج في الخارطة التقنية
         </div>
       </div>
     </div>
@@ -2929,17 +2950,24 @@ function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAudit
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* Chain integrity toggle */}
+      {/* View toggle */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
-        <button onClick={() => setShowChain(false)} style={{ padding: '8px 16px', background: !showChain ? C.forest : '#fff', color: !showChain ? '#fff' : C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-          📋 أحداث التشغيل
-        </button>
-        <button onClick={() => setShowChain(true)} style={{ padding: '8px 16px', background: showChain ? C.forest : '#fff', color: showChain ? '#fff' : C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-          🔗 سلامة سلسلة التدقيق
-        </button>
+        {[
+          { id: false, label: '📋 أحداث التشغيل'          },
+          { id: true,  label: '🔗 سلسلة التدقيق + Append-only' },
+        ].map(({ id, label }) => (
+          <button key={String(id)} onClick={() => setShowChain(id)} style={{ padding: '8px 16px', background: showChain === id ? C.forest : '#fff', color: showChain === id ? '#fff' : C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            {label}
+          </button>
+        ))}
       </div>
 
-      {showChain && <AuditChainIntegrityPanel isMobile={isMobile} />}
+      {showChain && (
+        <>
+          <AuditChainIntegrityPanel isMobile={isMobile} />
+          <AppendOnlyModelSection isMobile={isMobile} />
+        </>
+      )}
 
       {!showChain && <>
 
