@@ -1365,8 +1365,64 @@ const DATA_QUALITY_METRICS = [
   { label: 'Report completeness', labelAr: 'اكتمال التقرير',        value: '86%',     status: 'Report-ready', note: 'الأقسام الأساسية المطلوبة متوفرة'          },
 ];
 
+// ─── Sprint 4A Constants ───
+const USER_ROLES = [
+  {
+    role: 'Owner', ar: 'مالك المزرعة', color: C.forest,
+    permissions: ['View dashboard', 'View all reports', 'Approve monthly report', 'Download all exports'],
+    restrictions: ['Cannot edit locked audit events', 'Cannot change sensor calibration records'],
+  },
+  {
+    role: 'Operator', ar: 'مشغّل', color: '#2563EB',
+    permissions: ['Log daily operations', 'Add input usage entries', 'Trigger manual irrigation', 'Add maintenance notes'],
+    restrictions: ['Cannot approve compliance reports', 'Cannot delete audit events'],
+  },
+  {
+    role: 'Technician', ar: 'فني', color: C.warn,
+    permissions: ['Update device status', 'Add calibration records', 'Add maintenance records'],
+    restrictions: ['Cannot approve reports', 'Cannot edit batch financial links'],
+  },
+  {
+    role: 'Auditor', ar: 'مراجع / مفتش', color: '#7C3AED',
+    permissions: ['Read-only access to all data', 'View audit trail', 'View batch traceability', 'Download inspection package'],
+    restrictions: ['Cannot change operational data', 'Cannot trigger system actions'],
+  },
+  {
+    role: 'System', ar: 'النظام (آلي)', color: C.ok,
+    permissions: ['Log sensor readings automatically', 'Log automation events', 'Generate system alerts', 'Create report drafts'],
+    restrictions: ['Requires human approval for final report submission'],
+  },
+];
+
+const NAAMA_MAPPING = [
+  { internal: 'farmCode',            label: 'Farm Code',            target: 'farm_identifier',             status: 'Mapped',    note: 'Final field name subject to official API docs' },
+  { internal: 'batchId',             label: 'Batch ID',             target: 'production_batch_reference',  status: 'Mapped',    note: 'Used for traceability workflow'               },
+  { internal: 'cropType',            label: 'Crop Type',            target: 'crop_type',                   status: 'Mapped',    note: 'Requires controlled vocabulary when available' },
+  { internal: 'inspectionReadiness', label: 'Inspection Readiness', target: 'readiness_score',             status: 'Draft',     note: 'Demo-only field — not in official spec yet'   },
+  { internal: 'waterQualityPH',      label: 'Water pH',             target: 'water_ph_value',              status: 'Mapped',    note: 'From sensor readings log'                     },
+  { internal: 'auditTrailRef',       label: 'Audit Trail Ref',      target: 'operation_log_reference',     status: 'Draft',     note: 'Pending API schema from NAAMA'                },
+];
+
+const ZATCA_MAPPING = [
+  { internal: 'batchId',   label: 'Batch ID',   target: 'invoice_reference_note',  status: 'Concept',  note: 'Links harvest batch to invoice reference only'        },
+  { internal: 'invoiceId', label: 'Invoice ID', target: 'invoice_id',              status: 'Concept',  note: 'Requires actual e-invoicing integration'              },
+  { internal: 'sellerVat', label: 'Seller VAT', target: 'seller_tax_identifier',   status: 'Required', note: 'Must come from registered entity — not shown in demo' },
+  { internal: 'quantity',  label: 'Quantity',   target: 'line_item_quantity',       status: 'Mapped',   note: 'kg unit — from harvest record'                        },
+];
+
+const getReportMetadata = () => ({
+  reportId:    `RPT-DEMO-${new Date().toISOString().slice(0,7).replace('-','')}-0001`,
+  farmCode:    'DEMO-001',
+  dataMode:    'Simulated',
+  environment: 'Demo',
+  generatedAt: new Date().toISOString(),
+  generatedBy: 'Demo System',
+  version:     'Compliance Demo v0.4',
+  disclaimer:  'Generated from a demo environment using simulated readings. Not a certification document.',
+});
+
 function ComplianceTab({ isMobile, historicalData, zones }) {
-  const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits' | 'operational'>('scores');
+  const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits' | 'operational' | 'roles' | 'api'>('scores');
   const [reportModal, setReportModal] = useState<string | null>(null);
   const [auditZone, setAuditZone]     = useState('all');
   const [auditType, setAuditType]     = useState('all');
@@ -1379,6 +1435,8 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
     { id: 'traceability', label: '🔗 تتبع الدفعات',    icon: Leaf        },
     { id: 'limits',       label: '🏛️ حدود النظام',    icon: ShieldCheck },
     { id: 'operational',  label: '📊 سجلات التشغيل',  icon: Clock       },
+    { id: 'roles',        label: '👥 الأدوار',          icon: ShieldCheck },
+    { id: 'api',          label: '🔌 خريطة الحقول',    icon: FileText    },
   ];
 
   const allAudit: AuditEntry[] = useMemo(
@@ -1463,6 +1521,8 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
       {section === 'traceability' && <BatchTraceabilitySection isMobile={isMobile} />}
       {section === 'limits'       && <SystemLimitsSection      isMobile={isMobile} />}
       {section === 'operational'  && <OperationalLogsSection  isMobile={isMobile} historicalData={historicalData} />}
+      {section === 'roles'        && <RolesPermissionsSection isMobile={isMobile} />}
+      {section === 'api'          && <ApiMappingSection       isMobile={isMobile} />}
 
       {/* Disclaimer */}
       <div style={{ marginTop: 24, padding: '12px 16px', background: `${C.lime}08`, border: `1px dashed ${C.lime}60`, borderRadius: 10, fontSize: 11, color: C.inkSoft, lineHeight: 1.8 }}>
@@ -1558,25 +1618,170 @@ function ComplianceScores({ isMobile, historicalData }) {
 
 // ─── Section 2: مكتبة التقارير ───
 function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
-  const downloadGAPCSV = () => {
-    const rows = [
-      ['Batch ID', 'Crop', 'Zone', 'Planting', 'Harvest', 'Water Source', 'Inputs', 'Sensor Summary', 'Invoice', 'Status'],
-      ...BATCH_DATA.map(b => [b.batchId, b.crop.replace(/[^\w\s-]/g,'').trim(), b.zone, b.planting, b.harvest, b.water, b.inputs, b.sensor, b.invoice, b.statusLabel.replace(/[^\w\s-]/g,'').trim()]),
+
+  const buildCsvWithMeta = (headers: string[], dataRows: string[][]) => {
+    const m = getReportMetadata();
+    const meta = [
+      `# iGarden Smart OS - Compliance Demo Export`,
+      `# Report ID: ${m.reportId}`,
+      `# Farm Code: ${m.farmCode}  |  Data Mode: ${m.dataMode}  |  Environment: ${m.environment}`,
+      `# Generated: ${m.generatedAt}  |  Version: ${m.version}`,
+      `# DISCLAIMER: ${m.disclaimer}`,
+      `#`,
     ];
-    const csv  = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const rows = [headers.map(h => `"${h}"`).join(','), ...dataRows.map(r => r.map(v => `"${v}"`).join(','))];
+    return [...meta, ...rows].join('\n');
+  };
+
+  const downloadGAPCSV = () => {
+    const headers = ['Batch ID', 'Crop', 'Zone', 'Planting', 'Harvest', 'Water Source', 'Inputs', 'Sensor Summary', 'Invoice', 'Status'];
+    const dataRows = BATCH_DATA.map(b => [b.batchId, b.crop.replace(/[^\w\s-]/g,'').trim(), b.zone, b.planting, b.harvest, b.water, b.inputs, b.sensor, b.invoice, b.statusLabel.replace(/[^\w\s-]/g,'').trim()]);
+    const csv  = buildCsvWithMeta(headers, dataRows);
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob); link.download = 'igarden-batches.csv'; link.click();
   };
+
   const downloadAuditCSVDirect = () => {
-    const rows = [
-      ['Event ID','Timestamp','Zone','Actor','Action','Before','After','Reason','Hash','Status'],
-      ...ENHANCED_AUDIT_EVENTS.map(e => [e.id,e.ts,e.zone,e.actor,e.action,e.before,e.after,e.reason,e.hash,e.status]),
-    ];
-    const csv  = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const headers = ['Event ID','Timestamp','Zone','Actor','Action','Before','After','Reason','Hash','Status'];
+    const dataRows = ENHANCED_AUDIT_EVENTS.map(e => [e.id,e.ts,e.zone,e.actor,e.action,e.before,e.after,e.reason,e.hash,e.status]);
+    const csv  = buildCsvWithMeta(headers, dataRows);
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob); link.download = 'igarden-audit-trail.csv'; link.click();
+  };
+
+  const generateCompliancePDF = async () => {
+    const { jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const meta = getReportMetadata();
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = 210;
+    const mg = 14;
+    const cW = pageW - mg * 2;
+    let y = 0;
+
+    // Header bar
+    doc.setFillColor(15, 61, 46);
+    doc.rect(0, 0, pageW, 36, 'F');
+    doc.setTextColor(124, 179, 66);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('iGarden Smart OS  |  COMPLIANCE READINESS REPORT  |  DEMO - Simulated Data Only', mg, 9);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(15);
+    doc.text('Compliance Readiness Report', mg, 21);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text(`${meta.generatedAt.slice(0,10)}  |  Farm: ${meta.farmCode}  |  ${meta.version}`, mg, 29);
+    doc.setTextColor(124, 179, 66);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('DEMO MODE', pageW - mg, 29, { align: 'right' });
+    y = 42;
+
+    // Disclaimer box
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(253, 230, 138);
+    doc.roundedRect(mg, y, cW, 16, 2, 2, 'FD');
+    doc.setTextColor(146, 64, 14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('DISCLAIMER:', mg + 3, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text(meta.disclaimer, mg + 28, y + 6);
+    doc.text('Saudi GAP / MEWA / SFDA / ZATCA references are for structural alignment purposes only. Official certification requires accredited inspectors.', mg + 3, y + 12);
+    y = 63;
+
+    // Metadata table
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
+    doc.text('Report Metadata', mg, y); y += 4;
+    autoTable(doc, {
+      startY: y,
+      head: [['Field', 'Value']],
+      body: [
+        ['Report ID',   meta.reportId],
+        ['Farm Code',   meta.farmCode],
+        ['Data Mode',   meta.dataMode],
+        ['Environment', meta.environment],
+        ['Generated',   meta.generatedAt],
+        ['Version',     meta.version],
+      ],
+      theme: 'plain',
+      headStyles: { fillColor: [15,61,46], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, textColor: [31,41,55] },
+      alternateRowStyles: { fillColor: [250,250,247] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 38 }, 1: { cellWidth: cW - 38 } },
+      margin: { left: mg, right: mg }, tableWidth: cW,
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // Saudi GAP Readiness
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
+    doc.text('Saudi GAP Readiness Checklist', mg, y); y += 4;
+    autoTable(doc, {
+      startY: y,
+      head: [['Requirement', 'Status', 'Notes']],
+      body: [
+        ['Sensor Calibration Records',     'Partial',         'Demo calibration log — 6 devices'],
+        ['Irrigation Water Documentation', 'Partial',         'Demo water source log available'],
+        ['Input Usage Log',                'Partial',         '6 entries with batch linkage'],
+        ['Batch Traceability Records',     'Demo Ready',      '2 batches, full lifecycle tracked'],
+        ['Pest / Disease Log',             'In Development',  'Not yet implemented'],
+        ['Harvest Quality Records',        'In Development',  'Not yet implemented'],
+        ['Worker Training Records',        'Requires Lab',    'Out of scope for demo'],
+        ['Soil / Substrate Analysis',      'Requires Lab',    'Requires third-party laboratory'],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [124,179,66], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { cellWidth: 72 }, 1: { cellWidth: 32 }, 2: { cellWidth: cW - 104 } },
+      margin: { left: mg, right: mg }, tableWidth: cW,
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // Audit Events
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
+    doc.text('Audit Trail — Recent Events', mg, y); y += 4;
+    autoTable(doc, {
+      startY: y,
+      head: [['Event ID', 'Timestamp', 'Zone', 'Actor', 'Action', 'Hash']],
+      body: ENHANCED_AUDIT_EVENTS.map(e => [e.id, e.ts, e.zone, e.actor, e.action, e.hash]),
+      theme: 'striped',
+      headStyles: { fillColor: [15,61,46], textColor: 255, fontSize: 7, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7 },
+      margin: { left: mg, right: mg }, tableWidth: cW,
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // Batch Traceability
+    if (y > 220) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
+    doc.text('Batch Traceability', mg, y); y += 4;
+    autoTable(doc, {
+      startY: y,
+      head: [['Batch ID', 'Crop', 'Planting', 'Harvest', 'Water Source', 'Status']],
+      body: BATCH_DATA.map(b => [b.batchId, b.crop.replace(/[^\w\s-]/g,'').trim(), b.planting, b.harvest, b.water, b.statusLabel]),
+      theme: 'striped',
+      headStyles: { fillColor: [37,99,235], textColor: 255, fontSize: 7, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7.5 },
+      margin: { left: mg, right: mg }, tableWidth: cW,
+    });
+
+    // Footer on every page
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      doc.setFillColor(240, 239, 232);
+      doc.rect(0, 282, pageW, 15, 'F');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(107, 114, 128);
+      doc.text(`iGarden Smart OS — Demo Compliance Report  |  Page ${i} of ${total}  |  Farm: ${meta.farmCode}`, mg, 289);
+      doc.text('DEMO DATA ONLY — Not for official submission', pageW - mg, 289, { align: 'right' });
+    }
+
+    doc.save(`igarden-compliance-report-${new Date().toISOString().slice(0,10)}.pdf`);
   };
 
   return (
@@ -1588,10 +1793,10 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
         <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>هذه التقارير تجريبية لعرض طريقة تنظيم البيانات. لا تُعد مستندات رسمية قبل مراجعتها من جهة مختصة.</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {[
-            { label: '📊 تقرير شهري PDF',          action: () => { setReportModal('mewa-monthly');    setTimeout(() => window.print(), 400); }, color: '#0F3D2E' },
-            { label: '📋 ملف جاهزية Saudi GAP PDF', action: () => { setReportModal('saudi-gap');       setTimeout(() => window.print(), 400); }, color: '#7CB342' },
-            { label: '📦 تقرير تتبع الدفعات CSV',  action: downloadGAPCSV,                                                                      color: '#2563EB' },
-            { label: '🕐 سجل التدقيق CSV',         action: downloadAuditCSVDirect,                                                               color: '#6B7280' },
+            { label: '📊 تقرير الامتثال PDF',        action: generateCompliancePDF,                                                                 color: '#0F3D2E' },
+            { label: '📋 ملف جاهزية Saudi GAP PDF',  action: () => { setReportModal('saudi-gap');       setTimeout(() => window.print(), 400); }, color: '#7CB342' },
+            { label: '📦 تقرير تتبع الدفعات CSV',   action: downloadGAPCSV,                                                                        color: '#2563EB' },
+            { label: '🕐 سجل التدقيق CSV',           action: downloadAuditCSVDirect,                                                                color: '#6B7280' },
           ].map(({ label, action, color }) => (
             <button key={label} onClick={action} style={{ padding: '9px 16px', background: color, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
               {label}
@@ -2057,6 +2262,142 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
           <div style={{ marginTop: 12, padding: '10px 14px', background: '#fffbf0', border: `1px solid ${C.warn}30`, borderRadius: 8, fontSize: 10, color: C.inkSoft, lineHeight: 1.8 }}>
             <strong>* ملاحظة: </strong>{DISCLAIMER_TEXT}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 7: Roles & Permissions ───
+function RolesPermissionsSection({ isMobile }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: C.forest, marginBottom: 4 }}>الصلاحيات والأدوار — User Roles & Permissions</div>
+        <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.6, marginBottom: 14 }}>
+          كل إجراء تشغيلي أو يدوي مرتبط بدور واضح. <strong>في هذا الديمو، الأدوار معروضة كبنية صلاحيات مقترحة وليست نظام مصادقة فعلي.</strong>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+          {USER_ROLES.map(r => (
+            <div key={r.role} style={{ border: `1px solid ${r.color}30`, borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ background: r.color, color: '#fff', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14 }}>{r.ar}</div>
+                  <div style={{ fontSize: 10, opacity: 0.85, fontFamily: 'monospace' }}>{r.role}</div>
+                </div>
+              </div>
+              <div style={{ padding: '12px 14px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.ok, marginBottom: 6 }}>✅ الصلاحيات</div>
+                {r.permissions.map((p, i) => (
+                  <div key={i} style={{ fontSize: 11, color: C.inkSoft, marginBottom: 3, display: 'flex', gap: 6 }}>
+                    <span style={{ color: C.ok, flexShrink: 0 }}>•</span>{p}
+                  </div>
+                ))}
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.danger, margin: '10px 0 6px' }}>🚫 القيود</div>
+                {r.restrictions.map((res, i) => (
+                  <div key={i} style={{ fontSize: 11, color: C.inkSoft, marginBottom: 3, display: 'flex', gap: 6 }}>
+                    <span style={{ color: C.danger, flexShrink: 0 }}>•</span>{res}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '12px 16px', fontSize: 12, color: '#92400E', lineHeight: 1.7 }}>
+        <strong>ملاحظة هامة: </strong>هذا الهيكل مبني لدعم Saudi GAP Record Keeping ومتطلبات الامتثال. التطبيق الفعلي لنظام المصادقة (Authentication) يتم عند ربط النظام ببيئة إنتاج.
+      </div>
+    </div>
+  );
+}
+
+// ─── Section 8: API-ready Mapping ───
+function ApiMappingSection({ isMobile }) {
+  const thS: React.CSSProperties = { padding: '9px 11px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 11 };
+  const tdS: React.CSSProperties = { padding: '7px 11px', border: `1px solid ${C.border}`, fontSize: 12 };
+  const statusColor = (s: string) => s === 'Mapped' ? { bg: '#ECFDF5', color: C.ok } : s === 'Required' ? { bg: '#FEF2F2', color: C.danger } : { bg: '#FFFBEB', color: C.warn };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 16px', fontSize: 12, color: '#1E3A8A', lineHeight: 1.7 }}>
+        <strong>API-ready Mapping: </strong>
+        هذه الخريطة توضح جاهزية بنية البيانات للتكامل المستقبلي. <strong>لا تعني وجود تكامل رسمي أو إرسال فعلي لأي بيانات إلى جهة حكومية.</strong>
+      </div>
+
+      {/* NAAMA */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, background: C.creamDark, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: C.forest }}>🏛️ NAAMA Platform Mapping</div>
+          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#FEF3C7', color: '#92400E', fontWeight: 700, border: '1px solid #FDE68A' }}>API-ready when official docs available</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr>{['حقل داخلي','Label','حقل NAAMA','الحالة','ملاحظة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+            <tbody>
+              {NAAMA_MAPPING.map((r, i) => {
+                const sc = statusColor(r.status);
+                return (
+                  <tr key={r.internal} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11, fontWeight: 700 }}>{r.internal}</td>
+                    <td style={tdS}>{r.label}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11, color: '#2563EB' }}>{r.target}</td>
+                    <td style={tdS}><span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color }}>{r.status}</span></td>
+                    <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{r.note}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ZATCA */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, background: C.creamDark, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: C.forest }}>🧾 ZATCA Fatoora Mapping</div>
+          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#FAF5FF', color: '#7C3AED', fontWeight: 700, border: '1px solid #E9D5FF' }}>Invoice linkage only — not food traceability</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr>{['حقل داخلي','Label','حقل ZATCA','الحالة','ملاحظة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+            <tbody>
+              {ZATCA_MAPPING.map((r, i) => {
+                const sc = statusColor(r.status);
+                return (
+                  <tr key={r.internal} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11, fontWeight: 700 }}>{r.internal}</td>
+                    <td style={tdS}>{r.label}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11, color: '#7C3AED' }}>{r.target}</td>
+                    <td style={tdS}><span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color }}>{r.status}</span></td>
+                    <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{r.note}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Metadata Card */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: C.forest, marginBottom: 12 }}>Report Metadata — بيانات وصفية للتقارير</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, fontSize: 12 }}>
+          {[
+            ['Farm Code',    'DEMO-001'],
+            ['Data Mode',    'Simulated'],
+            ['Environment',  'Demo'],
+            ['Version',      'Compliance Demo v0.4'],
+            ['Report Format', 'PDF / CSV / Print'],
+            ['Metadata Scope', 'Header of every export'],
+          ].map(([k, v]) => (
+            <div key={k} style={{ background: C.creamDark, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>{k}</div>
+              <div style={{ fontWeight: 700, color: C.ink, fontFamily: k.includes('Code') || k.includes('Format') ? 'monospace' : 'inherit' }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 10, fontSize: 11, color: C.inkSoft, lineHeight: 1.6 }}>
+          هذه الـ metadata تُضاف تلقائياً لكل تصدير (CSV header · PDF title · Printable report) لتسهيل التتبع والمراجعة.
         </div>
       </div>
     </div>
