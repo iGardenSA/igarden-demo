@@ -6,6 +6,8 @@ import { Sprout, Droplets, Thermometer, Wind, Zap, Activity, Settings, BarChart3
 import { REGULATORY_REFS, DISCLAIMER_TEXT, ESTABLISHMENT_INFO } from './compliance/standards';
 import { calcComplianceScore, mockSHA, generateAuditEntries } from './compliance/compliance-engine';
 import type { AuditEntry } from './compliance/compliance-engine';
+import { useComplianceData } from './hooks/useComplianceData';
+import type { AuditEventDisplay, BatchDisplay, WaterSourceDisplay } from './lib/compliance-data';
 
 // ═══════════════════════════════════════════════════════════════════
 // 🌱 iGarden Smart OS — Demo Seed v1.0
@@ -1456,6 +1458,12 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
   const [auditType, setAuditType]     = useState('all');
   const [auditPeriod, setAuditPeriod] = useState('30d');
 
+  // Sprint 6: live data from Supabase, falls back to mock constants when env vars absent
+  const { data: liveData, source: dataSource, loading: dataLoading } = useComplianceData();
+  const currentAuditEvents: AuditEventDisplay[] = liveData?.auditEvents ?? ENHANCED_AUDIT_EVENTS;
+  const currentBatches:     BatchDisplay[]       = liveData?.batches     ?? BATCH_DATA;
+  const currentWaterSources: WaterSourceDisplay[] = liveData?.waterSources ?? WATER_SOURCE_LOG;
+
   const sections = [
     { id: 'scores',       label: '🏆 درجة الامتثال',  icon: ShieldCheck },
     { id: 'reports',      label: '📄 مكتبة التقارير',  icon: FileText    },
@@ -1484,7 +1492,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
 
   const downloadAuditCSV = () => {
     const headers = ['Event ID', 'الوقت', 'المنطقة', 'المشغّل', 'الإجراء', 'قبل', 'بعد', 'السبب', 'Hash', 'الحالة'];
-    const rows = ENHANCED_AUDIT_EVENTS.map(e =>
+    const rows = currentAuditEvents.map(e =>
       [e.id, e.ts, e.zone, e.actor, e.action, e.before, e.after, e.reason, e.hash, e.status].map(v => `"${v}"`).join(',')
     );
     const csv  = [headers.join(','), ...rows].join('\n');
@@ -1500,8 +1508,15 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
       {/* Banner */}
       <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.forestLight} 100%)`, color: '#fff', borderRadius: 12, padding: isMobile ? 18 : 24, marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -30, left: -20, fontSize: 160, opacity: 0.05, pointerEvents: 'none' }}>🛡️</div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'rgba(124,179,66,0.18)', borderRadius: 14, fontSize: 11, fontWeight: 700, color: C.lime, marginBottom: 10, border: `1px solid ${C.lime}40` }}>
-          🇸🇦 MEWA · SFDA · Saudi GAP · ZATCA
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 10, alignItems: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'rgba(124,179,66,0.18)', borderRadius: 14, fontSize: 11, fontWeight: 700, color: C.lime, border: `1px solid ${C.lime}40` }}>
+            🇸🇦 MEWA · SFDA · Saudi GAP · ZATCA
+          </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 14, fontSize: 10, fontWeight: 700, border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.85)' }}>
+            {dataLoading ? '⏳ جاري التحقق من المصدر…'
+              : dataSource === 'supabase' ? '🟢 مصدر البيانات: قاعدة ديمو Supabase'
+              : '🔵 مصدر البيانات: بيانات محلية محاكاة'}
+          </div>
         </div>
         <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900 }}>طبقة الامتثال السعودي</h2>
         <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: isMobile ? 12 : 14 }}>
@@ -1544,11 +1559,13 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
           auditType={auditType}   setAuditType={setAuditType}
           auditPeriod={auditPeriod} setAuditPeriod={setAuditPeriod}
           downloadAuditCSV={downloadAuditCSV}
+          auditEventsData={currentAuditEvents}
+          dataSource={dataSource}
         />
       )}
-      {section === 'traceability' && <BatchTraceabilitySection isMobile={isMobile} />}
+      {section === 'traceability' && <BatchTraceabilitySection isMobile={isMobile} batchData={currentBatches} dataSource={dataSource} />}
       {section === 'limits'       && <SystemLimitsSection      isMobile={isMobile} />}
-      {section === 'operational'  && <OperationalLogsSection  isMobile={isMobile} historicalData={historicalData} />}
+      {section === 'operational'  && <OperationalLogsSection  isMobile={isMobile} historicalData={historicalData} waterSourceData={currentWaterSources} dataSource={dataSource} />}
       {section === 'roles'        && <RolesPermissionsSection isMobile={isMobile} />}
       {section === 'api'          && <ApiMappingSection       isMobile={isMobile} />}
 
@@ -2474,7 +2491,7 @@ function ApiMappingSection({ isMobile }) {
 }
 
 // ─── Section 6: Operational Logs ───
-function OperationalLogsSection({ isMobile, historicalData }) {
+function OperationalLogsSection({ isMobile, historicalData, waterSourceData = WATER_SOURCE_LOG, dataSource = 'mock' }: { isMobile: boolean; historicalData: any; waterSourceData?: WaterSourceDisplay[]; dataSource?: string }) {
   const thS: React.CSSProperties = { padding: '9px 11px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 11, whiteSpace: 'nowrap' as const };
   const tdS: React.CSSProperties = { padding: '7px 11px', border: `1px solid ${C.border}`, fontSize: 12 };
 
@@ -2616,11 +2633,14 @@ function OperationalLogsSection({ isMobile, historicalData }) {
         <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 14, color: C.forest }}>💧 توثيق مصدر المياه</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Water Source Documentation — Simulated readings</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              Water Source Documentation —{' '}
+              {dataSource === 'supabase' ? '🟢 Supabase Demo DB' : '🔵 Simulated readings'}
+            </div>
           </div>
           <button onClick={() => downloadCSV('water-source-log.csv', [
             ['Source','Treatment','Last Test','pH','EC','TDS','Status','Attachment'],
-            ...WATER_SOURCE_LOG.map(r => [r.source, r.treatment, r.lastTest, r.ph, r.ec, r.tds, r.status, r.attachment]),
+            ...waterSourceData.map(r => [r.source, r.treatment, r.lastTest, r.ph, r.ec, r.tds, r.status, r.attachment]),
           ])} style={{ padding: '6px 12px', background: C.creamDark, color: C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
             <Download size={12} /> CSV
           </button>
@@ -2629,7 +2649,7 @@ function OperationalLogsSection({ isMobile, historicalData }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
             <thead><tr>{['مصدر المياه','نوع المعالجة','آخر اختبار','pH','EC','TDS','الحالة','المرفق'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
             <tbody>
-              {WATER_SOURCE_LOG.map((r, i) => {
+              {waterSourceData.map((r, i) => {
                 const ok = r.status === 'ضمن الهدف';
                 return (
                   <tr key={r.source} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
@@ -2941,7 +2961,7 @@ function AppendOnlyModelSection({ isMobile }) {
 }
 
 // ─── Section 3: Audit Trail ───
-function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAuditZone, auditType, setAuditType, auditPeriod, setAuditPeriod, downloadAuditCSV }) {
+function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAuditZone, auditType, setAuditType, auditPeriod, setAuditPeriod, downloadAuditCSV, auditEventsData = ENHANCED_AUDIT_EVENTS, dataSource = 'mock' }: { isMobile: boolean; filteredAudit: AuditEntry[]; zones: any[]; auditZone: string; setAuditZone: (v: string) => void; auditType: string; setAuditType: (v: string) => void; auditPeriod: string; setAuditPeriod: (v: string) => void; downloadAuditCSV: () => void; auditEventsData?: AuditEventDisplay[]; dataSource?: string }) {
   const [showChain, setShowChain] = useState(false);
   const sel: React.CSSProperties = { padding: '8px 10px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 12, background: '#fff', cursor: 'pointer' };
   const thS: React.CSSProperties = { padding: '9px 11px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, borderBottom: `2px solid ${C.border}`, background: C.creamDark, whiteSpace: 'nowrap' as const, fontSize: 11 };
@@ -2976,7 +2996,9 @@ function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAudit
         <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontWeight: 800, color: C.forest, fontSize: 14 }}>أحداث التشغيل التفصيلية</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Detailed Operational Events — Audit-ready structure</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              {dataSource === 'supabase' ? '🟢 Supabase Demo DB' : '🔵 Local Mock Data'} — Audit-ready structure
+            </div>
           </div>
           <button onClick={downloadAuditCSV} style={{ padding: '7px 14px', background: C.forest, color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Download size={13} /> تصدير CSV
@@ -2992,7 +3014,7 @@ function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAudit
               </tr>
             </thead>
             <tbody>
-              {ENHANCED_AUDIT_EVENTS.map((e, i) => (
+              {auditEventsData.map((e, i) => (
                 <tr key={e.id} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
                   <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: C.inkSoft, whiteSpace: 'nowrap' }}>{e.id}</td>
                   <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, whiteSpace: 'nowrap' }}>{e.ts}</td>
@@ -3092,10 +3114,12 @@ function AuditTrailSection({ isMobile, filteredAudit, zones, auditZone, setAudit
 }
 
 // ─── Section 4: Batch Traceability ───
-function BatchTraceabilitySection({ isMobile }) {
-  const [selectedBatch, setSelectedBatch] = React.useState('BATCH-TOM-2026-001');
+function BatchTraceabilitySection({ isMobile, batchData = BATCH_DATA, dataSource = 'mock' }: { isMobile: boolean; batchData?: BatchDisplay[]; dataSource?: string }) {
+  const [selectedBatch, setSelectedBatch] = React.useState(batchData[0]?.batchId ?? 'BATCH-TOM-2026-001');
   const thS: React.CSSProperties = { padding: '9px 12px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 11 };
   const tdS: React.CSSProperties = { padding: '8px 12px', border: `1px solid ${C.border}`, fontSize: 12 };
+
+  const activeBatches = batchData.filter(b => b.statusLabel.includes('نشطة') || b.statusLabel.includes('active')).length || batchData.length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -3103,10 +3127,10 @@ function BatchTraceabilitySection({ isMobile }) {
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
         {[
-          { label: 'دفعات نشطة',       value: '2',         color: C.ok     },
-          { label: 'سجلات مدخلات',     value: '20',        color: '#2563EB' },
-          { label: 'تنبيهات مفتوحة',   value: '0',         color: C.ok     },
-          { label: 'ربط فاتورة',        value: 'ديمو فقط', color: C.muted  },
+          { label: 'دفعات نشطة',     value: String(activeBatches), color: C.ok      },
+          { label: 'إجمالي الدفعات', value: String(batchData.length), color: '#2563EB' },
+          { label: 'تنبيهات مفتوحة', value: '0',          color: C.ok      },
+          { label: 'ربط فاتورة',     value: 'ديمو فقط',  color: C.muted   },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
             <div style={{ fontSize: 10, color: C.muted, marginBottom: 6 }}>{label}</div>
@@ -3117,8 +3141,11 @@ function BatchTraceabilitySection({ isMobile }) {
 
       {/* Batches Table */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, fontWeight: 800, color: C.forest, fontSize: 14 }}>
-          سجل الدفعات — Batch Traceability
+        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontWeight: 800, color: C.forest, fontSize: 14 }}>سجل الدفعات — Batch Traceability</div>
+          <span style={{ fontSize: 10, color: dataSource === 'supabase' ? C.ok : '#2563EB', fontWeight: 700 }}>
+            {dataSource === 'supabase' ? '🟢 Supabase' : '🔵 Mock'}
+          </span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
@@ -3126,7 +3153,7 @@ function BatchTraceabilitySection({ isMobile }) {
               <tr>{['Batch ID', 'المحصول', 'المنطقة', 'تاريخ الزراعة', 'الحصاد المتوقع', 'سجلات المدخلات', 'ملخص الحساسات', 'ربط الفاتورة', 'الحالة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {BATCH_DATA.map((b, i) => (
+              {batchData.map((b, i) => (
                 <tr key={b.batchId} style={{ background: i % 2 === 0 ? '#fff' : C.cream, cursor: 'pointer' }} onClick={() => setSelectedBatch(b.batchId)}>
                   <td style={{ ...tdS, fontFamily: 'monospace', fontWeight: 700, color: selectedBatch === b.batchId ? C.forest : C.inkSoft }}>{b.batchId}</td>
                   <td style={{ ...tdS, fontWeight: 600 }}>{b.crop}</td>

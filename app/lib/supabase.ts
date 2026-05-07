@@ -41,6 +41,18 @@ async function rest<T>(
   return res.json() as Promise<T>;
 }
 
+// ─── Generic get helper (used by compliance-data.ts) ─────────────────
+// Fetches rows from a table with optional PostgREST query string.
+// Returns empty array on error or when Supabase is not configured.
+export async function get<T = Record<string, unknown>>(
+  table: string,
+  query = ''
+): Promise<T[]> {
+  const path = query ? `${table}?${query}` : table;
+  const result = await rest<T[]>(path);
+  return result ?? [];
+}
+
 // ─── Read helpers ────────────────────────────────────────────────────
 
 export async function fetchDemoFarm() {
