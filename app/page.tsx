@@ -1332,8 +1332,41 @@ const BATCH_DATA = [
   },
 ];
 
+// ─── Sprint 3 Constants ───
+const CALIBRATION_LOG = [
+  { deviceId: 'PH-002-A',    type: 'pH Sensor',        zone: 'المحمية A', lastCal: '2026-05-01', nextCal: '2026-06-01', tech: 'Operator',   status: 'Valid',        notes: 'معايرة ثنائية النقطة مكتملة'       },
+  { deviceId: 'EC-002-A',    type: 'EC Sensor',        zone: 'المحمية A', lastCal: '2026-05-02', nextCal: '2026-06-02', tech: 'Operator',   status: 'Valid',        notes: 'فحص محلول معياري مكتمل'           },
+  { deviceId: 'PH-003-B',    type: 'pH Sensor',        zone: 'المحمية B', lastCal: '2026-04-25', nextCal: '2026-05-25', tech: 'Operator',   status: 'Review Soon',  notes: 'موعد المراجعة خلال 18 يوم'        },
+  { deviceId: 'EC-003-B',    type: 'EC Sensor',        zone: 'المحمية B', lastCal: '2026-04-26', nextCal: '2026-05-26', tech: 'Operator',   status: 'Valid',        notes: 'معايرة أسبوعية دورية'             },
+  { deviceId: 'PUMP-IRR-01', type: 'Irrigation Pump',  zone: 'المحمية B', lastCal: '2026-04-28', nextCal: '2026-05-28', tech: 'Technician', status: 'Review Soon',  notes: 'فحص معدل التدفق مطلوب قريباً'    },
+  { deviceId: 'TEMP-001-C',  type: 'Temp/Hum Sensor',  zone: 'المحمية C', lastCal: '2026-05-03', nextCal: '2026-06-03', tech: 'Operator',   status: 'Valid',        notes: 'مقارنة مرجعية مكتملة'             },
+];
+
+const INPUT_USAGE_LOG = [
+  { inputId: 'INP-2026-001', type: 'Nutrient',       name: 'محلول A الهيدروبونيك',   qty: '2.5',  unit: 'L',  batch: 'BATCH-TOM-2026-001', appliedBy: 'System',   appliedAt: '2026-05-08 09:15', zone: 'المحمية A', reason: 'EC أقل من الهدف المرحلي'          },
+  { inputId: 'INP-2026-002', type: 'pH Adjustment',  name: 'pH Down',                qty: '120',  unit: 'ml', batch: 'BATCH-TOM-2026-001', appliedBy: 'Operator', appliedAt: '2026-05-08 11:10', zone: 'المحمية A', reason: 'ضبط pH لمرحلة الإزهار'            },
+  { inputId: 'INP-2026-003', type: 'Water',          name: 'مياه ري مفلترة',          qty: '180',  unit: 'L',  batch: 'BATCH-LET-2026-002', appliedBy: 'System',   appliedAt: '2026-05-08 12:40', zone: 'المحمية B', reason: 'دورة ري مجدولة'                  },
+  { inputId: 'INP-2026-004', type: 'Nutrient',       name: 'محلول B الهيدروبونيك',   qty: '1.8',  unit: 'L',  batch: 'BATCH-TOM-2026-001', appliedBy: 'System',   appliedAt: '2026-05-07 09:00', zone: 'المحمية A', reason: 'NPK للمرحلة الخضرية'             },
+  { inputId: 'INP-2026-005', type: 'pH Adjustment',  name: 'pH Up',                  qty: '80',   unit: 'ml', batch: 'BATCH-LET-2026-002', appliedBy: 'Operator', appliedAt: '2026-05-06 14:00', zone: 'المحمية B', reason: 'رفع pH — أقل من 5.8'             },
+  { inputId: 'INP-2026-006', type: 'Water',          name: 'مياه ري مفلترة',          qty: '220',  unit: 'L',  batch: 'BATCH-TOM-2026-001', appliedBy: 'System',   appliedAt: '2026-05-06 07:00', zone: 'المحمية A', reason: 'دورة ري صباحية'                  },
+];
+
+const WATER_SOURCE_LOG = [
+  { source: 'خزان ري مفلتر (رئيسي)',    treatment: 'فلتر رسوبي + فلتر كربوني', lastTest: '2026-05-06', ph: '6.4', ec: '1.1 mS/cm', tds: '720 ppm',  status: 'ضمن الهدف',   attachment: 'غير مرفق — ديمو' },
+  { source: 'خزان احتياطي (شبكة مياه)', treatment: 'خزان احتياطي + ترشيح',      lastTest: '2026-04-29', ph: '7.1', ec: '1.6 mS/cm', tds: '980 ppm',  status: 'للمراقبة',    attachment: 'غير مرفق — ديمو' },
+];
+
+const DATA_QUALITY_METRICS = [
+  { label: 'Missing readings',    labelAr: 'قراءات مفقودة',        value: '0.8%',    status: 'Good',        note: 'أقل من حد المراجعة الداخلي'              },
+  { label: 'Sensor offline time', labelAr: 'وقت توقف الحساسات',    value: '12 دقيقة', status: 'Good',        note: 'لا توقف يتجاوز 24 ساعة'                 },
+  { label: 'Outlier readings',    labelAr: 'قراءات شاذة',           value: '3',       status: 'Review',      note: 'تستلزم مراجعة المشغّل قبل التقرير النهائي' },
+  { label: 'Manual overrides',    labelAr: 'تعديلات يدوية',         value: '2',       status: 'Review',      note: 'كلا التعديلين موثّقان في سجل التدقيق'      },
+  { label: 'Calibration status',  labelAr: 'حالة المعايرة',         value: '4/6 صالح', status: 'Review Soon', note: 'جهازان يحتاجان مراجعة قريباً'              },
+  { label: 'Report completeness', labelAr: 'اكتمال التقرير',        value: '86%',     status: 'Report-ready', note: 'الأقسام الأساسية المطلوبة متوفرة'          },
+];
+
 function ComplianceTab({ isMobile, historicalData, zones }) {
-  const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits'>('scores');
+  const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits' | 'operational'>('scores');
   const [reportModal, setReportModal] = useState<string | null>(null);
   const [auditZone, setAuditZone]     = useState('all');
   const [auditType, setAuditType]     = useState('all');
@@ -1345,6 +1378,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
     { id: 'audit',        label: '🕐 سجل المراجعة',    icon: Clock       },
     { id: 'traceability', label: '🔗 تتبع الدفعات',    icon: Leaf        },
     { id: 'limits',       label: '🏛️ حدود النظام',    icon: ShieldCheck },
+    { id: 'operational',  label: '📊 سجلات التشغيل',  icon: Clock       },
   ];
 
   const allAudit: AuditEntry[] = useMemo(
@@ -1427,7 +1461,8 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
         />
       )}
       {section === 'traceability' && <BatchTraceabilitySection isMobile={isMobile} />}
-      {section === 'limits'       && <SystemLimitsSection isMobile={isMobile} />}
+      {section === 'limits'       && <SystemLimitsSection      isMobile={isMobile} />}
+      {section === 'operational'  && <OperationalLogsSection  isMobile={isMobile} historicalData={historicalData} />}
 
       {/* Disclaimer */}
       <div style={{ marginTop: 24, padding: '12px 16px', background: `${C.lime}08`, border: `1px dashed ${C.lime}60`, borderRadius: 10, fontSize: 11, color: C.inkSoft, lineHeight: 1.8 }}>
@@ -2024,6 +2059,189 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Section 6: Operational Logs ───
+function OperationalLogsSection({ isMobile, historicalData }) {
+  const thS: React.CSSProperties = { padding: '9px 11px', textAlign: 'right' as const, fontWeight: 700, color: C.forest, border: `1px solid ${C.border}`, background: C.creamDark, fontSize: 11, whiteSpace: 'nowrap' as const };
+  const tdS: React.CSSProperties = { padding: '7px 11px', border: `1px solid ${C.border}`, fontSize: 12 };
+
+  const dqColor = (s: string) => s === 'Good' ? C.ok : s === 'Report-ready' ? '#2563EB' : s === 'Review Soon' ? C.warn : '#DC2626';
+
+  const downloadCSV = (filename: string, rows: string[][]) => {
+    const csv  = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob); link.download = filename; link.click();
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── Data Quality Panel ── */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: C.forest, color: '#fff', padding: '12px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>📊 جودة البيانات — Data Quality</div>
+            <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>مؤشرات جاهزية البيانات للتقرير — Demo</div>
+          </div>
+          <button onClick={() => downloadCSV('data-quality.csv', [
+            ['المؤشر','Label','القيمة','الحالة','الملاحظة'],
+            ...DATA_QUALITY_METRICS.map(m => [m.labelAr, m.label, m.value, m.status, m.note]),
+          ])} style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Download size={12} /> CSV
+          </button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 0 }}>
+          {DATA_QUALITY_METRICS.map((m, i) => {
+            const col = dqColor(m.status);
+            return (
+              <div key={m.label} style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, borderRight: i % 2 === 0 ? `1px solid ${C.border}` : 'none', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div style={{ minWidth: 56, height: 56, borderRadius: 10, background: col + '15', border: `2px solid ${col}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: 18, color: col, lineHeight: 1, textAlign: 'center' }}>{m.value}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: C.ink }}>{m.labelAr}</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{m.label}</div>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: col + '15', color: col, border: `1px solid ${col}40` }}>{m.status}</span>
+                  <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 5, lineHeight: 1.5 }}>{m.note}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ padding: '10px 18px', background: '#FFFBEB', borderTop: `1px solid #FDE68A`, fontSize: 11, color: '#92400E' }}>
+          ⚠️ هذه المؤشرات لبيئة الديمو. "Report-ready" لا تعني امتثالاً رسمياً — تعني أن بنية البيانات جاهزة للمراجعة.
+        </div>
+      </div>
+
+      {/* ── Calibration & Maintenance ── */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: C.forest }}>🔧 سجل المعايرة والصيانة</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Calibration & Maintenance Log — Simulated</div>
+          </div>
+          <button onClick={() => downloadCSV('calibration-log.csv', [
+            ['Device ID','Type','Zone','Last Calibration','Next Calibration','Technician','Status','Notes'],
+            ...CALIBRATION_LOG.map(d => [d.deviceId, d.type, d.zone, d.lastCal, d.nextCal, d.tech, d.status, d.notes]),
+          ])} style={{ padding: '6px 12px', background: C.creamDark, color: C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Download size={12} /> CSV
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+            <thead><tr>{['Device ID','النوع','المنطقة','آخر معايرة','المعايرة القادمة','الفني','الحالة','الملاحظة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+            <tbody>
+              {CALIBRATION_LOG.map((d, i) => {
+                const sc = d.status === 'Valid' ? { bg: '#ECFDF5', color: C.ok } : { bg: '#FFFBEB', color: C.warn };
+                return (
+                  <tr key={d.deviceId} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontWeight: 700, fontSize: 11 }}>{d.deviceId}</td>
+                    <td style={tdS}>{d.type}</td>
+                    <td style={{ ...tdS, fontWeight: 600, color: C.forest }}>{d.zone}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11 }}>{d.lastCal}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11 }}>{d.nextCal}</td>
+                    <td style={tdS}>{d.tech}</td>
+                    <td style={tdS}><span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color }}>{d.status}</span></td>
+                    <td style={{ ...tdS, color: C.inkSoft, fontSize: 11 }}>{d.notes}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: '10px 18px', background: `${C.lime}06`, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.inkSoft, lineHeight: 1.6 }}>
+          💡 هذا السجل يوضح بنية توثيق المعايرة في بيئة الديمو. اعتماد أي جهاز رسمياً يتطلب إجراءات توثيق وفريقاً مختصاً.
+        </div>
+      </div>
+
+      {/* ── Input Usage Log ── */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: C.forest }}>🧪 سجل المدخلات الزراعية</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Input Usage Log — Linked to Batch ID — Simulated</div>
+          </div>
+          <button onClick={() => downloadCSV('input-usage-log.csv', [
+            ['Input ID','Type','Name','Quantity','Unit','Batch','Applied By','Applied At','Zone','Reason'],
+            ...INPUT_USAGE_LOG.map(r => [r.inputId, r.type, r.name, r.qty, r.unit, r.batch, r.appliedBy, r.appliedAt, r.zone, r.reason]),
+          ])} style={{ padding: '6px 12px', background: C.creamDark, color: C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Download size={12} /> CSV
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+            <thead><tr>{['Input ID','النوع','المادة','الكمية','الوحدة','Batch','المشغّل','الوقت','المنطقة','السبب'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+            <tbody>
+              {INPUT_USAGE_LOG.map((r, i) => {
+                const typeColor = r.type === 'Nutrient' ? '#2563EB' : r.type === 'pH Adjustment' ? C.warn : C.ok;
+                return (
+                  <tr key={r.inputId} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11, fontWeight: 700 }}>{r.inputId}</td>
+                    <td style={tdS}><span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, background: typeColor + '18', color: typeColor }}>{r.type}</span></td>
+                    <td style={{ ...tdS, fontWeight: 600 }}>{r.name}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', textAlign: 'center' as const }}>{r.qty}</td>
+                    <td style={{ ...tdS, color: C.muted }}>{r.unit}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10, color: C.forest }}>{r.batch}</td>
+                    <td style={tdS}><span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: r.appliedBy === 'System' ? '#EFF6FF' : '#FFFBEB', color: r.appliedBy === 'System' ? '#1D4ED8' : '#92400E' }}>{r.appliedBy === 'System' ? '🤖' : '✋'} {r.appliedBy}</span></td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 10 }}>{r.appliedAt}</td>
+                    <td style={{ ...tdS, fontWeight: 600, color: C.forest }}>{r.zone}</td>
+                    <td style={{ ...tdS, color: C.inkSoft, fontSize: 11 }}>{r.reason}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: '10px 18px', background: '#EFF6FF', borderTop: `1px solid #BFDBFE`, fontSize: 11, color: '#1E40AF', lineHeight: 1.6 }}>
+          💡 كل مدخل زراعي مرتبط بـ Batch ID أو Zone ID لضمان إمكانية التتبع. هذا الربط أساسي لمتطلبات Saudi GAP Record Keeping.
+        </div>
+      </div>
+
+      {/* ── Water Source Documentation ── */}
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: C.forest }}>💧 توثيق مصدر المياه</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Water Source Documentation — Simulated readings</div>
+          </div>
+          <button onClick={() => downloadCSV('water-source-log.csv', [
+            ['Source','Treatment','Last Test','pH','EC','TDS','Status','Attachment'],
+            ...WATER_SOURCE_LOG.map(r => [r.source, r.treatment, r.lastTest, r.ph, r.ec, r.tds, r.status, r.attachment]),
+          ])} style={{ padding: '6px 12px', background: C.creamDark, color: C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Download size={12} /> CSV
+          </button>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
+            <thead><tr>{['مصدر المياه','نوع المعالجة','آخر اختبار','pH','EC','TDS','الحالة','المرفق'].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+            <tbody>
+              {WATER_SOURCE_LOG.map((r, i) => {
+                const ok = r.status === 'ضمن الهدف';
+                return (
+                  <tr key={r.source} style={{ background: i % 2 === 0 ? '#fff' : C.cream }}>
+                    <td style={{ ...tdS, fontWeight: 600 }}>{r.source}</td>
+                    <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{r.treatment}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontSize: 11 }}>{r.lastTest}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontWeight: 600 }}>{r.ph}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontWeight: 600 }}>{r.ec}</td>
+                    <td style={{ ...tdS, fontFamily: 'monospace', fontWeight: 600 }}>{r.tds}</td>
+                    <td style={tdS}><span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: ok ? '#ECFDF5' : '#FFFBEB', color: ok ? C.ok : C.warn }}>{r.status}</span></td>
+                    <td style={{ ...tdS, fontSize: 11, color: C.muted }}>{r.attachment}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: '10px 18px', background: '#FFF7ED', borderTop: `1px solid #FDBA74`, fontSize: 11, color: '#7C2D12', lineHeight: 1.6 }}>
+          ⚠️ قيم pH وEC وTDS هنا أهداف تشغيلية زراعية، <strong>وليست حدوداً تنظيمية نهائية</strong>. أي اعتماد رسمي لجودة المياه يتطلب مستنداً من جهة مختصة عند الحاجة.
+        </div>
+      </div>
+
     </div>
   );
 }
