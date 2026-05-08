@@ -8,6 +8,7 @@ import { calcComplianceScore, mockSHA, generateAuditEntries } from './compliance
 import type { AuditEntry } from './compliance/compliance-engine';
 import { useComplianceData } from './hooks/useComplianceData';
 import type { AuditEventDisplay, BatchDisplay, WaterSourceDisplay } from './lib/compliance-data';
+import { logReportExport } from './lib/report-exports';
 
 // ═══════════════════════════════════════════════════════════════════
 // 🌱 iGarden Smart OS — Demo Seed v1.0
@@ -1696,10 +1697,17 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
     link.href = URL.createObjectURL(blob); link.download = 'igarden-audit-trail.csv'; link.click();
   };
 
+  const createReportId = () => {
+    const now = new Date();
+    const stamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 14);
+    return `RPT-DEMO-${stamp}`;
+  };
+
   const generateCompliancePDF = async () => {
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
     const meta = getReportMetadata();
+    const reportId = createReportId();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = 210;
     const mg = 14;
@@ -1746,7 +1754,7 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
       startY: y,
       head: [['Field', 'Value']],
       body: [
-        ['Report ID',   meta.reportId],
+        ['Report ID',   reportId],
         ['Farm Code',   meta.farmCode],
         ['Data Mode',   meta.dataMode],
         ['Environment', meta.environment],
@@ -1868,6 +1876,16 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
     }
 
     doc.save(`igarden-compliance-report-${new Date().toISOString().slice(0,10)}.pdf`);
+
+    void logReportExport({
+      reportId,
+      farmId:      null,
+      reportType:  'Compliance Readiness Report',
+      dataMode:    'demo',
+      generatedBy: 'Demo System',
+      fileUrl:     null,
+      disclaimer:  meta.disclaimer,
+    });
   };
 
   return (
@@ -1879,7 +1897,7 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
         <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>هذه التقارير تجريبية لعرض طريقة تنظيم البيانات. لا تُعد مستندات رسمية قبل مراجعتها من جهة مختصة.</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {[
-            { label: '📊 تقرير الامتثال PDF',        action: generateCompliancePDF,                                                                 color: '#0F3D2E' },
+            { label: '📊 تقرير الامتثال PDF',        action: () => void generateCompliancePDF(),                                                    color: '#0F3D2E' },
             { label: '📋 ملف جاهزية Saudi GAP PDF',  action: () => { setReportModal('saudi-gap');       setTimeout(() => window.print(), 400); }, color: '#7CB342' },
             { label: '📦 تقرير تتبع الدفعات CSV',   action: downloadGAPCSV,                                                                        color: '#2563EB' },
             { label: '🕐 سجل التدقيق CSV',           action: downloadAuditCSVDirect,                                                                color: '#6B7280' },

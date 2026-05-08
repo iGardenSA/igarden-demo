@@ -73,7 +73,35 @@ export async function fetchBatches(farmId: string) {
   ).then(r => r ?? []);
 }
 
-// ─── Write helpers ────────────────────────────────────────────────────
+// ─── Write helpers ───────────────────────────────────────────────────
+
+// Generic POST — inserts one row, returns the representation.
+// Throws on HTTP errors so the caller can decide what to do.
+export async function post<T = Record<string, unknown>>(
+  table: string,
+  body: Record<string, unknown>
+): Promise<T[]> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+  const url = `${SUPABASE_URL}/rest/v1/${table}`;
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: {
+      'apikey':        SUPABASE_ANON,
+      'Authorization': `Bearer ${SUPABASE_ANON}`,
+      'Content-Type':  'application/json',
+      'Accept':        'application/json',
+      'Prefer':        'return=representation',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase POST ${table}: ${res.status} ${text}`);
+  }
+  return res.json() as Promise<T[]>;
+}
 
 export async function insertReportExport(payload: {
   report_id:    string;
