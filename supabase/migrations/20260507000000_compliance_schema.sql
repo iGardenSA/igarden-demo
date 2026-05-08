@@ -151,7 +151,7 @@ comment on table water_sources is 'Irrigation water source records per farm.';
 create table if not exists report_exports (
   id           uuid primary key default gen_random_uuid(),
   report_id    text not null unique,
-  farm_id      uuid not null references farms(id) on delete restrict,
+  farm_id      uuid          references farms(id) on delete restrict, -- nullable until Sprint 9B wires activeFarmId
   report_type  text not null
                     check (report_type in (
                       'mewa-monthly', 'saudi-gap', 'water-efficiency',
