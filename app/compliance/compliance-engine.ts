@@ -1,5 +1,7 @@
 // ─── دوال pure للحساب — لا حالة React هنا ───
 
+import { EC_OPERATIONAL_BANDS } from './standards';
+
 export interface AuditEntry {
   id:         string;
   timestamp:  string;
@@ -12,18 +14,25 @@ export interface AuditEntry {
   isOverride: boolean;
 }
 
-/** نسبة الامتثال لآخر 30 يوم من historicalData */
+export type EcCategory = keyof typeof EC_OPERATIONAL_BANDS;
+
+/** نسبة الامتثال لآخر 30 يوم — عتبة EC حسب فئة المحصول
+ *  category افتراضياً 'general' (يقبل 0–3.5 mS/cm)
+ *  مرّر 'leafy' / 'fruiting' / 'herbal' / 'fodder' لقياس أدق
+ */
 export function calcComplianceScore(
-  histData: Array<{ ph: number; ec: number; tempIn: number }>
+  histData: Array<{ ph: number; ec: number; tempIn: number }>,
+  category: EcCategory = 'general'
 ): { score: number; deviations: number } {
   const last30 = histData.slice(-30);
   if (!last30.length) return { score: 0, deviations: 0 };
+  const ecBand = EC_OPERATIONAL_BANDS[category];
   let pass = 0, deviations = 0;
   const total = last30.length * 3;
   last30.forEach((r) => {
-    const phOk   = r.ph    >= 5.5 && r.ph    <= 7.5;
-    const ecOk   = r.ec    <= 2.5;
-    const tmpOk  = r.tempIn >= 18  && r.tempIn <= 30;
+    const phOk   = r.ph     >= 5.5         && r.ph     <= 7.5;
+    const ecOk   = r.ec     >= ecBand.min  && r.ec     <= ecBand.max;
+    const tmpOk  = r.tempIn >= 18          && r.tempIn <= 30;
     if (phOk)  pass++; else deviations++;
     if (ecOk)  pass++; else deviations++;
     if (tmpOk) pass++; else deviations++;
