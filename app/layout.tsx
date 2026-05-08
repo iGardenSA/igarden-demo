@@ -57,8 +57,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Default to Arabic; client I18nProvider may flip to English at runtime via localStorage.
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

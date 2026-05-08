@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, ComposedChart } from 'recharts';
-import { Sprout, Droplets, Thermometer, Wind, Zap, Activity, Settings, BarChart3, Layers, Download, AlertTriangle, CheckCircle2, TrendingUp, MapPin, Calendar, Beaker, Sun, Power, RefreshCw, Save, ChevronLeft, Cpu, FlaskConical, Leaf, CloudRain, ShieldCheck, FileText, Clock, X, Eye, Printer } from 'lucide-react';
+import { Sprout, Droplets, Thermometer, Wind, Zap, Activity, Settings, BarChart3, Layers, Download, AlertTriangle, CheckCircle2, TrendingUp, MapPin, Calendar, Beaker, Sun, Power, RefreshCw, Save, ChevronLeft, ChevronRight, Cpu, FlaskConical, Leaf, CloudRain, ShieldCheck, FileText, Clock, X, Eye, Printer, Languages, LogOut } from 'lucide-react';
 import { REGULATORY_REFS, DISCLAIMER_TEXT, ESTABLISHMENT_INFO } from './compliance/standards';
 import { calcComplianceScore, mockSHA, generateAuditEntries } from './compliance/compliance-engine';
 import type { AuditEntry } from './compliance/compliance-engine';
@@ -11,6 +11,9 @@ import { useSupabaseAuth }   from './hooks/useSupabaseAuth';
 import type { AuditEventDisplay, BatchDisplay, WaterSourceDisplay } from './lib/compliance-data';
 import { logReportExport } from './lib/report-exports';
 import { uploadComplianceReportPdf } from './lib/report-storage';
+import { I18nProvider, useI18n } from './i18n/I18nContext';
+import { DemoAuthProvider, useDemoAuth } from './components/DemoAuthContext';
+import { LoginScreen } from './components/LoginScreen';
 
 // ═══════════════════════════════════════════════════════════════════
 // 🌱 iGarden Smart OS — Demo Seed v1.0
@@ -222,9 +225,30 @@ function IGardenLogo({ variant = 'white', size = 44 }: { variant?: 'white' | 'gr
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// المكوّن الرئيسي
+// المكوّن الرئيسي — مع Providers + Login Gate
 // ═══════════════════════════════════════════════════════════════════
 export default function DemoPage() {
+  return (
+    <I18nProvider defaultLocale="ar">
+      <DemoAuthProvider>
+        <RootGate />
+      </DemoAuthProvider>
+    </I18nProvider>
+  );
+}
+
+function RootGate() {
+  const auth = useDemoAuth();
+  if (!auth.ready) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAF7' }}>...</div>;
+  }
+  if (!auth.signedIn) return <LoginScreen />;
+  return <DemoApp />;
+}
+
+function DemoApp() {
+  const { t, locale, setLocale, dir } = useI18n();
+  const auth = useDemoAuth();
   const [activeTab, setActiveTab] = useState('live');
   const [zones, setZones] = useState(DEFAULT_ZONES);
   const [selectedZoneId, setSelectedZoneId] = useState('zone_a');
@@ -249,7 +273,7 @@ export default function DemoPage() {
     meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0';
   }, []);
 
-  // تحميل من sessionStorage (مع دعم Claude Artifacts كـ fallback)
+  // تحميل من localStorage (يبقى عبر إغلاق التبويب) — مع دعم Claude Artifacts كـ fallback
   useEffect(() => {
     (async () => {
       try {
@@ -262,10 +286,10 @@ export default function DemoPage() {
           const o = await w.storage.get('overrides');
           if (o?.value) setOverrides(JSON.parse(o.value));
         } else {
-          // Production environment (browser sessionStorage — cleared on tab close)
-          const z = sessionStorage.getItem('igarden_zones');
+          // Production environment — localStorage (يبقى عبر إغلاق التبويب)
+          const z = localStorage.getItem('igarden_zones');
           if (z) setZones(JSON.parse(z));
-          const o = sessionStorage.getItem('igarden_overrides');
+          const o = localStorage.getItem('igarden_overrides');
           if (o) setOverrides(JSON.parse(o));
         }
       } catch (e) { /* key not found or invalid JSON */ }
@@ -273,7 +297,7 @@ export default function DemoPage() {
     })();
   }, []);
 
-  // حفظ تلقائي
+  // حفظ تلقائي في localStorage
   useEffect(() => {
     if (!storageReady) return;
     (async () => {
@@ -284,8 +308,8 @@ export default function DemoPage() {
           await w.storage.set('zones', JSON.stringify(zones));
           await w.storage.set('overrides', JSON.stringify(overrides));
         } else {
-          sessionStorage.setItem('igarden_zones', JSON.stringify(zones));
-          sessionStorage.setItem('igarden_overrides', JSON.stringify(overrides));
+          localStorage.setItem('igarden_zones', JSON.stringify(zones));
+          localStorage.setItem('igarden_overrides', JSON.stringify(overrides));
         }
       } catch (e) { /* ignore quota errors */ }
     })();
@@ -314,15 +338,19 @@ export default function DemoPage() {
   }, [zones, isRunning]);
 
   const tabs = [
-    { id: 'live',       label: 'لوحة المعطيات الحية', icon: Activity },
-    { id: 'engine',     label: 'محرّك التوصيات',       icon: Sprout },
-    { id: 'history',    label: 'السجل التاريخي',        icon: BarChart3 },
-    { id: 'zones',      label: 'إعدادات المناطق',       icon: Layers },
-    { id: 'compliance', label: '📋 الامتثال',           icon: ShieldCheck },
+    { id: 'live',       label: t.tabs.live,       icon: Activity },
+    { id: 'engine',     label: t.tabs.engine,     icon: Sprout },
+    { id: 'history',    label: t.tabs.history,    icon: BarChart3 },
+    { id: 'zones',      label: t.tabs.zones,      icon: Layers },
+    { id: 'compliance', label: t.tabs.compliance, icon: ShieldCheck },
   ];
 
+  const fontFamily = locale === 'ar'
+    ? "'Tajawal', 'Segoe UI', system-ui, sans-serif"
+    : "'Segoe UI', system-ui, -apple-system, sans-serif";
+
   return (
-    <div dir="rtl" lang="ar" style={{ fontFamily: "'Tajawal', 'Segoe UI', system-ui, sans-serif", background: C.cream, minHeight: '100vh', color: C.ink }}>
+    <div dir={dir} lang={locale} style={{ fontFamily, background: C.cream, minHeight: '100vh', color: C.ink }}>
       <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet" />
 
       {/* ═══ Header ═══ */}
@@ -331,12 +359,30 @@ export default function DemoPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, minWidth: 0 }}>
             <IGardenLogo variant="green" size={isMobile ? 38 : 48} />
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>iGarden <span style={{ color: C.limeLight, fontSize: isMobile ? 13 : 16, fontWeight: 500 }}>Smart OS</span></div>
+              <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>iGarden <span style={{ color: C.limeLight, fontSize: isMobile ? 13 : 16, fontWeight: 500 }}>{t.header.appShort}</span></div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.limeLight, fontSize: isMobile ? 11 : 12, background: 'rgba(255,255,255,0.08)', padding: isMobile ? '6px 10px' : '8px 14px', borderRadius: 20, border: `1px solid ${C.lime}40` }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: isRunning ? C.lime : C.muted, boxShadow: isRunning ? `0 0 10px ${C.lime}` : 'none', animation: isRunning ? 'pulse 1.5s infinite' : 'none', flexShrink: 0 }}></span>
-            <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{isRunning ? (isMobile ? 'البث المباشر' : 'البث المباشر — البيانات تُحدَّث كل ثانيتين') : 'متوقف'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, flexWrap: 'wrap' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.limeLight, fontSize: isMobile ? 11 : 12, background: 'rgba(255,255,255,0.08)', padding: isMobile ? '6px 10px' : '8px 14px', borderRadius: 20, border: `1px solid ${C.lime}40` }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: isRunning ? C.lime : C.muted, boxShadow: isRunning ? `0 0 10px ${C.lime}` : 'none', animation: isRunning ? 'pulse 1.5s infinite' : 'none', flexShrink: 0 }}></span>
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{isRunning ? (isMobile ? t.common.livePulseShort : t.common.livePulse) : t.common.paused}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+              title={t.login.languageLabel}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.08)', color: C.limeLight, border: `1px solid ${C.lime}40`, padding: isMobile ? '6px 10px' : '7px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', fontSize: isMobile ? 11 : 12, fontWeight: 700 }}
+            >
+              <Languages size={13} /> {locale === 'ar' ? 'EN' : 'ع'}
+            </button>
+            <button
+              type="button"
+              onClick={() => auth.signOut()}
+              title={t.common.signOut}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.08)', color: '#FCA5A5', border: '1px solid rgba(252,165,165,0.4)', padding: isMobile ? '6px 10px' : '7px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', fontSize: isMobile ? 11 : 12, fontWeight: 700 }}
+            >
+              <LogOut size={13} /> {!isMobile && t.common.signOut}
+            </button>
           </div>
         </div>
         <style>{`@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }`}</style>
@@ -366,11 +412,11 @@ export default function DemoPage() {
 
       {/* ═══ Transparency Banner ═══ */}
       <div style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A', padding: '9px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, fontSize: isMobile ? 11 : 12, color: '#92400E', fontWeight: 500, lineHeight: 1.5 }}>
-        <span>🔬 نموذج ديمو — يعرض معمارية حقيقية باستخدام بيانات محاكاة · ليس بديلاً عن شهادة Saudi GAP أو التفتيش الرسمي من جهة معتمدة</span>
+        <span>{t.banner.transparency}</span>
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700 }}>Demo Mode</span>
-          <span style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: '#1E40AF' }}>Simulated Readings</span>
-          <span style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: '#166534' }}>Not a Certification Substitute</span>
+          <span style={{ background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700 }}>{t.banner.chipDemo}</span>
+          <span style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: '#1E40AF' }}>{t.banner.chipSimulated}</span>
+          <span style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: '#166534' }}>{t.banner.chipNotCert}</span>
         </span>
       </div>
 
@@ -387,37 +433,42 @@ export default function DemoPage() {
       <footer style={{ background: C.forestDark, color: C.limeLight, padding: isMobile ? '24px 14px 16px' : '36px 24px 22px', marginTop: 40, borderTop: `3px solid ${C.lime}` }}>
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
-          {/* القسم 1: العلامة + الـ Tagline + CTA */}
+          {/* Brand + Tagline + CTA */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 18 : 24, alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', marginBottom: isMobile ? 18 : 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
               <IGardenLogo variant="green" size={isMobile ? 48 : 60} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: '#fff', lineHeight: 1.1, letterSpacing: '-0.01em' }}>iGarden</div>
-                <div style={{ fontSize: isMobile ? 13 : 15, color: C.lime, marginTop: 6, fontWeight: 700, letterSpacing: '0.02em' }}>ازرع بذكاء</div>
+                <div style={{ fontSize: isMobile ? 13 : 15, color: C.lime, marginTop: 6, fontWeight: 700, letterSpacing: '0.02em' }}>{t.common.tagline}</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: 8, width: isMobile ? '100%' : 'auto' }}>
               <a href="https://igarden.sa" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 22px', background: C.lime, color: C.forestDark, borderRadius: 8, fontWeight: 700, fontSize: 14, textDecoration: 'none', transition: 'all .15s' }}>
-                زيارة igarden.sa ↗
+                {t.common.visitWebsite} ↗
               </a>
-              <div style={{ fontSize: 11, color: C.limeLight, opacity: 0.65 }}>للاستشارات والشراكات</div>
+              <div style={{ fontSize: 11, color: C.limeLight, opacity: 0.65 }}>{t.common.forConsulting}</div>
             </div>
           </div>
 
-          {/* القسم 3: Signature Line */}
+          {/* Production-readiness note */}
+          <div style={{ background: 'rgba(124,179,66,0.08)', border: `1px dashed ${C.lime}40`, borderRadius: 8, padding: '10px 14px', marginBottom: isMobile ? 14 : 16, fontSize: 11, color: C.limeLight, lineHeight: 1.7 }}>
+            {t.footer.productionReady}
+          </div>
+
+          {/* Signature Line */}
           <div style={{ textAlign: 'center', padding: isMobile ? '12px 0 14px' : '14px 0 18px', marginBottom: isMobile ? 14 : 18, borderTop: `1px solid rgba(124, 179, 66, 0.18)`, borderBottom: `1px solid rgba(124, 179, 66, 0.18)` }}>
             <div style={{ fontSize: isMobile ? 14 : 16, color: '#fff', fontWeight: 700, letterSpacing: '0.01em', lineHeight: 1.5 }}>
-              حين تزرع بذكاء، <span style={{ color: C.lime }}>تحصد بثقة</span>
+              {t.common.signature}
             </div>
           </div>
 
-          {/* القسم 4: Demo notice + copyright */}
+          {/* Demo notice + copyright */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 14, justifyContent: 'space-between', alignItems: 'center', fontSize: isMobile ? 10 : 11, color: C.limeLight, opacity: 0.6 }}>
             <div>
-              <strong style={{ color: '#fff', fontWeight: 600 }}>Smart OS — Demo Seed v1.0</strong>
-              {!isMobile && (<><span style={{ margin: '0 8px' }}>·</span>نموذج وظيفي يعكس المعمارية الحقيقية — القراءات محاكاة</>)}
+              <strong style={{ color: '#fff', fontWeight: 600 }}>{t.common.demoSeedV1}</strong>
+              {!isMobile && (<><span style={{ margin: '0 8px' }}>·</span>{t.common.demoNote}</>)}
             </div>
-            <div>© 2026 شركة انتيليجنت غاردن</div>
+            <div>{t.common.copyright}</div>
           </div>
         </div>
       </footer>
@@ -429,8 +480,9 @@ export default function DemoPage() {
 // 🟢 1) Live Dashboard
 // ═══════════════════════════════════════════════════════════════════
 function LiveDashboard({ zones, setZones, selectedZoneId, setSelectedZoneId, liveReadings, overrides, setOverrides, isMobile }) {
+  const { t } = useI18n();
   const zone = zones.find(z => z.id === selectedZoneId) || zones[0];
-  if (!zone) return <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>لا توجد مناطق — أضف منطقة من تبويب "إعدادات المناطق"</div>;
+  if (!zone) return <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>{t.live.noZones}</div>;
 
   const reading = liveReadings[zone.id] || {};
   const baseRec = recommend(zone.crop, zone.stage, zone.region);
@@ -453,9 +505,9 @@ function LiveDashboard({ zones, setZones, selectedZoneId, setSelectedZoneId, liv
     <div>
       {/* Demo Badges Row */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', padding: '4px 10px', borderRadius: 20 }}>🔬 Demo Mode</span>
-        <span style={{ fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE', padding: '4px 10px', borderRadius: 20 }}>📊 Simulated Readings</span>
-        <span style={{ fontSize: 11, color: C.muted, marginRight: 'auto' }}>القراءات تُحدَّث كل 2 ثانية — بيانات محاكاة للعرض التجريبي</span>
+        <span style={{ fontSize: 11, fontWeight: 700, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', padding: '4px 10px', borderRadius: 20 }}>{t.live.demoMode}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, background: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE', padding: '4px 10px', borderRadius: 20 }}>{t.live.simulated}</span>
+        <span style={{ fontSize: 11, color: C.muted, marginRight: 'auto' }}>{t.live.refreshNote}</span>
       </div>
       {/* Zone Selector */}
       <div style={{ display: 'flex', gap: isMobile ? 8 : 12, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -492,8 +544,8 @@ function LiveDashboard({ zones, setZones, selectedZoneId, setSelectedZoneId, liv
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <Badge color={zone.enabled ? C.ok : C.muted} text={zone.enabled ? '⏵ نشطة' : '⏸ موقوفة'} />
-          <Badge color={zone.auto ? C.lime : C.warn} text={zone.auto ? '🤖 تلقائي' : '✋ يدوي'} />
+          <Badge color={zone.enabled ? C.ok : C.muted} text={zone.enabled ? t.live.activeZone : t.live.inactiveZone} />
+          <Badge color={zone.auto ? C.lime : C.warn} text={zone.auto ? t.live.autoMode : t.live.manualMode} />
           {!isMobile && <Badge color={C.forestLight} text={`${REGIONS[zone.region].icon} ${REGIONS[zone.region].name}`} />}
         </div>
       </div>
@@ -501,72 +553,72 @@ function LiveDashboard({ zones, setZones, selectedZoneId, setSelectedZoneId, liv
       {/* أربع الوحدات */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: isMobile ? 12 : 16, marginBottom: 20 }}>
         <ControlCard
-          title="Climate Switch"
-          subtitle="التحكم بالمناخ"
+          title={t.live.climateSwitch}
+          subtitle={t.live.climateSubtitle}
           icon={Thermometer}
           enabled={zone.devices.climate}
           color={C.forest}
           metrics={[
-            { label: 'حرارة الهواء', value: reading.temp ?? '—', unit: '°C', target: targets.temp, status: status(reading.temp, targets.temp), icon: Thermometer },
-            { label: 'الرطوبة', value: reading.humidity ?? '—', unit: '%', target: targets.humidity, status: status(reading.humidity, targets.humidity), icon: CloudRain },
-            { label: 'CO₂', value: reading.co2 ?? '—', unit: 'ppm', target: [600, 1200], status: status(reading.co2, [600, 1200]), icon: Wind },
+            { label: t.live.airTemp, value: reading.temp ?? '—', unit: '°C', target: targets.temp, status: status(reading.temp, targets.temp), icon: Thermometer },
+            { label: t.live.humidity, value: reading.humidity ?? '—', unit: '%', target: targets.humidity, status: status(reading.humidity, targets.humidity), icon: CloudRain },
+            { label: t.live.co2, value: reading.co2 ?? '—', unit: 'ppm', target: [600, 1200], status: status(reading.co2, [600, 1200]), icon: Wind },
           ]}
           actuators={[
-            { name: 'مروحة', on: reading.fanOn },
-            { name: 'مكيّف', on: reading.coolerOn },
-            { name: 'مدفأة', on: reading.heaterOn },
-            { name: 'ضباب', on: reading.misterOn },
+            { name: t.live.fan, on: reading.fanOn },
+            { name: t.live.cooler, on: reading.coolerOn },
+            { name: t.live.heater, on: reading.heaterOn },
+            { name: t.live.mister, on: reading.misterOn },
           ]}
         />
         <ControlCard
-          title="Fertigation Switch"
-          subtitle="التسميد الآلي"
+          title={t.live.fertigationSwitch}
+          subtitle={t.live.fertigationSubtitle}
           icon={Beaker}
           enabled={zone.devices.fertigation}
           color={C.lime}
           metrics={[
-            { label: 'EC الموصلية', value: reading.ec ?? '—', unit: 'mS/cm', target: targets.ec, status: status(reading.ec, targets.ec), icon: Activity },
-            { label: 'pH الحموضة', value: reading.ph ?? '—', unit: '', target: targets.ph, status: status(reading.ph, targets.ph), icon: FlaskConical },
-            { label: 'NPK المستهدف', value: baseRec ? `${baseRec.targets.npk.n}-${baseRec.targets.npk.p}-${baseRec.targets.npk.k}` : '—', unit: 'ppm', target: null, status: 'ok', icon: Leaf },
+            { label: t.live.ec, value: reading.ec ?? '—', unit: 'mS/cm', target: targets.ec, status: status(reading.ec, targets.ec), icon: Activity },
+            { label: t.live.ph, value: reading.ph ?? '—', unit: '', target: targets.ph, status: status(reading.ph, targets.ph), icon: FlaskConical },
+            { label: t.live.npk, value: baseRec ? `${baseRec.targets.npk.n}-${baseRec.targets.npk.p}-${baseRec.targets.npk.k}` : '—', unit: 'ppm', target: null, status: 'ok', icon: Leaf },
           ]}
           actuators={[
-            { name: 'مضخة A', on: reading.pumpOn },
-            { name: 'مضخة B', on: !reading.pumpOn && Math.random() < 0.5 },
-            { name: 'pH دوزر', on: status(reading.ph, targets.ph) !== 'ok' },
+            { name: t.live.pumpA, on: reading.pumpOn },
+            { name: t.live.pumpB, on: !reading.pumpOn && Math.random() < 0.5 },
+            { name: t.live.phDoser, on: status(reading.ph, targets.ph) !== 'ok' },
           ]}
         />
         <ControlCard
-          title="Irrigation Switch"
-          subtitle="نظام الري"
+          title={t.live.irrigationSwitch}
+          subtitle={t.live.irrigationSubtitle}
           icon={Droplets}
           enabled={zone.devices.irrigation}
           color="#0EA5E9"
           metrics={[
-            { label: 'مستوى الخزان', value: reading.waterLevel ?? '—', unit: '%', target: [40, 100], status: (reading.waterLevel ?? 0) < 30 ? 'low' : 'ok', icon: Droplets },
-            { label: 'دورات اليوم', value: baseRec?.irrigation.freq ?? '—', unit: 'مرة', target: null, status: 'ok', icon: RefreshCw },
-            { label: 'مدة الدورة', value: baseRec?.irrigation.duration ?? '—', unit: 'ثانية', target: null, status: 'ok', icon: Calendar },
+            { label: t.live.waterLevel, value: reading.waterLevel ?? '—', unit: '%', target: [40, 100], status: (reading.waterLevel ?? 0) < 30 ? 'low' : 'ok', icon: Droplets },
+            { label: t.live.cyclesPerDay, value: baseRec?.irrigation.freq ?? '—', unit: '', target: null, status: 'ok', icon: RefreshCw },
+            { label: t.live.cycleDuration, value: baseRec?.irrigation.duration ?? '—', unit: 's', target: null, status: 'ok', icon: Calendar },
           ]}
           actuators={[
-            { name: 'صمام 1', on: reading.pumpOn },
-            { name: 'صمام 2', on: !reading.pumpOn && Math.random() < 0.4 },
-            { name: 'تصريف', on: false },
+            { name: t.live.valve1, on: reading.pumpOn },
+            { name: t.live.valve2, on: !reading.pumpOn && Math.random() < 0.4 },
+            { name: t.live.drain, on: false },
           ]}
         />
         <ControlCard
-          title="Energy Switch"
-          subtitle="إدارة الطاقة"
+          title={t.live.energySwitch}
+          subtitle={t.live.energySubtitle}
           icon={Zap}
           enabled={zone.devices.energy}
           color="#F59E0B"
           metrics={[
-            { label: 'إنتاج الشمسي', value: reading.solarPower ?? '—', unit: 'واط', target: null, status: 'ok', icon: Sun },
-            { label: 'سحب الشبكة', value: reading.gridDraw ?? '—', unit: 'واط', target: null, status: 'ok', icon: Power },
-            { label: 'صافي', value: reading.solarPower && reading.gridDraw ? Math.round(reading.solarPower - reading.gridDraw) : '—', unit: 'واط', target: null, status: (reading.solarPower ?? 0) > (reading.gridDraw ?? 0) ? 'ok' : 'low', icon: TrendingUp },
+            { label: t.live.solarPower, value: reading.solarPower ?? '—', unit: 'W', target: null, status: 'ok', icon: Sun },
+            { label: t.live.gridDraw, value: reading.gridDraw ?? '—', unit: 'W', target: null, status: 'ok', icon: Power },
+            { label: t.live.netPower, value: reading.solarPower && reading.gridDraw ? Math.round(reading.solarPower - reading.gridDraw) : '—', unit: 'W', target: null, status: (reading.solarPower ?? 0) > (reading.gridDraw ?? 0) ? 'ok' : 'low', icon: TrendingUp },
           ]}
           actuators={[
-            { name: 'الشمسي', on: (reading.solarPower ?? 0) > 100 },
-            { name: 'البطارية', on: (reading.solarPower ?? 0) < (reading.gridDraw ?? 0) },
-            { name: 'الشبكة', on: true },
+            { name: t.live.solar, on: (reading.solarPower ?? 0) > 100 },
+            { name: t.live.battery, on: (reading.solarPower ?? 0) < (reading.gridDraw ?? 0) },
+            { name: t.live.grid, on: true },
           ]}
         />
       </div>
@@ -575,18 +627,18 @@ function LiveDashboard({ zones, setZones, selectedZoneId, setSelectedZoneId, liv
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <h3 style={{ margin: 0, color: C.forest, fontSize: 16, fontWeight: 700 }}>تجاوز يدوي للمستهدفات</h3>
-            <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>القيم المُحدَّثة هنا تتجاوز توصيات Crop Engine لهذه المنطقة فقط</div>
+            <h3 style={{ margin: 0, color: C.forest, fontSize: 16, fontWeight: 700 }}>{t.live.overrideTitle}</h3>
+            <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>{t.live.overrideSubtitle}</div>
           </div>
           <button onClick={() => setOverrides({ ...overrides, [zone.id]: {} })} style={{ background: C.creamDark, border: `1px solid ${C.border}`, padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, color: C.forest, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <RefreshCw size={12} /> إعادة للقيم الأصلية
+            <RefreshCw size={12} /> {t.live.resetOriginal}
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-          <RangeSlider label="درجة الحرارة (°C)" min={10} max={40} step={0.5} value={targets.temp} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, temp: v } })} color={C.forest} />
-          <RangeSlider label="الرطوبة (%)" min={30} max={95} step={1} value={targets.humidity} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, humidity: v } })} color="#0EA5E9" />
-          <RangeSlider label="EC (mS/cm)" min={0.4} max={4.0} step={0.1} value={targets.ec} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, ec: v } })} color={C.lime} />
-          <RangeSlider label="pH" min={4.5} max={7.5} step={0.1} value={targets.ph} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, ph: v } })} color="#A855F7" />
+          <RangeSlider label={t.live.tempLabel} min={10} max={40} step={0.5} value={targets.temp} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, temp: v } })} color={C.forest} />
+          <RangeSlider label={t.live.humidityLabel} min={30} max={95} step={1} value={targets.humidity} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, humidity: v } })} color="#0EA5E9" />
+          <RangeSlider label={t.live.ecLabel} min={0.4} max={4.0} step={0.1} value={targets.ec} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, ec: v } })} color={C.lime} />
+          <RangeSlider label={t.live.phLabel} min={4.5} max={7.5} step={0.1} value={targets.ph} onChange={v => setOverrides({ ...overrides, [zone.id]: { ...ovr, ph: v } })} color="#A855F7" />
         </div>
       </div>
     </div>
@@ -665,10 +717,12 @@ function RangeSlider({ label, min, max, step, value, onChange, color }) {
 // 🟢 2) Crop Engine — محرّك التوصيات
 // ═══════════════════════════════════════════════════════════════════
 function CropEngine({ zones, setZones, overrides, setOverrides, isMobile }) {
+  const { t } = useI18n();
   const [crop, setCrop] = useState('tomato');
   const [stage, setStage] = useState('vegetative');
   const [region, setRegion] = useState('jeddah');
   const [applyZone, setApplyZone] = useState('zone_a');
+  const [toast, setToast] = useState<string | null>(null);
 
   const cropObj = CROP_DB[crop];
   const stages = Object.keys(cropObj.stages);
@@ -680,7 +734,7 @@ function CropEngine({ zones, setZones, overrides, setOverrides, isMobile }) {
   const applyToZone = () => {
     setZones(zones.map(z => z.id === applyZone ? { ...z, crop, stage, region } : z));
     setOverrides({ ...overrides, [applyZone]: {} });
-    alert(`✓ تم تطبيق برنامج ${cropObj.name} (${cropObj.stages[stage].name}) على ${zones.find(z => z.id === applyZone)?.name}`);
+    setToast(`${t.engine.appliedToast}: ${cropObj.name} (${cropObj.stages[stage].name}) → ${zones.find(z => z.id === applyZone)?.name}`);
   };
 
   return (
@@ -688,18 +742,18 @@ function CropEngine({ zones, setZones, overrides, setOverrides, isMobile }) {
       <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.forestLight} 100%)`, color: '#fff', borderRadius: 12, padding: isMobile ? 18 : 24, marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -30, left: -30, fontSize: isMobile ? 120 : 180, opacity: 0.06 }}>🌱</div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'rgba(124, 179, 66, 0.18)', borderRadius: 14, fontSize: isMobile ? 10 : 11, fontWeight: 700, color: C.lime, marginBottom: 10, border: `1px solid ${C.lime}40` }}>
-          ✨ ازرع بذكاء
+          {t.engine.badge}
         </div>
-        <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900 }}>محرّك التوصيات الذكي</h2>
-        <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: isMobile ? 12 : 14 }}>اختر المحصول والمرحلة والمنطقة — يقوم النظام تلقائياً بحساب EC و pH و NPK والمناخ المناسب</p>
-        <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: C.limeLight, opacity: 0.85 }}>📚 مكتبة 12 محصول × 4 مناطق × 3-4 مراحل = ~150 وصفة فريدة</div>
+        <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900 }}>{t.engine.title}</h2>
+        <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: isMobile ? 12 : 14 }}>{t.engine.subtitle}</p>
+        <div style={{ marginTop: 8, fontSize: isMobile ? 11 : 12, color: C.limeLight, opacity: 0.85 }}>{t.engine.libraryNote}</div>
       </div>
 
       {/* Selectors */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 14 : 20, marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 16px', color: C.forest, fontSize: 16, fontWeight: 700 }}>1. اختيار المعايير</h3>
+        <h3 style={{ margin: '0 0 16px', color: C.forest, fontSize: 16, fontWeight: 700 }}>{t.engine.step1}</h3>
 
-        <Label text="نوع المحصول" />
+        <Label text={t.engine.cropType} />
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8, marginBottom: 18 }}>
           {Object.entries(CROP_DB).map(([k, c]) => (
             <button key={k} onClick={() => setCrop(k)} style={{
@@ -710,12 +764,12 @@ function CropEngine({ zones, setZones, overrides, setOverrides, isMobile }) {
             }}>
               <span style={{ fontSize: isMobile ? 20 : 24 }}>{c.icon}</span>
               <span>{c.name}</span>
-              <span style={{ fontSize: 10, opacity: 0.7 }}>{c.cycleDays} يوم</span>
+              <span style={{ fontSize: 10, opacity: 0.7 }}>{c.cycleDays} {t.engine.dayUnit}</span>
             </button>
           ))}
         </div>
 
-        <Label text="المرحلة الزمنية" />
+        <Label text={t.engine.timeStage} />
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 18 }}>
           {stages.map(s => (
             <button key={s} onClick={() => setStage(s)} style={{
@@ -724,12 +778,12 @@ function CropEngine({ zones, setZones, overrides, setOverrides, isMobile }) {
               fontFamily: 'inherit', fontWeight: 600, fontSize: 13,
             }}>
               <div style={{ fontWeight: 700 }}>{cropObj.stages[s].name}</div>
-              <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2 }}>اليوم {cropObj.stages[s].days}</div>
+              <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2 }}>{t.engine.dayShort} {cropObj.stages[s].days}</div>
             </button>
           ))}
         </div>
 
-        <Label text="المنطقة الجغرافية" />
+        <Label text={t.engine.geoRegion} />
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
           {Object.entries(REGIONS).map(([k, r]) => (
             <button key={k} onClick={() => setRegion(k)} style={{
@@ -749,26 +803,26 @@ function CropEngine({ zones, setZones, overrides, setOverrides, isMobile }) {
       {rec && (
         <div style={{ background: '#fff', border: `2px solid ${C.lime}`, borderRadius: 12, padding: isMobile ? 14 : 20, marginBottom: 20 }}>
           <h3 style={{ margin: '0 0 16px', color: C.forest, fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CheckCircle2 size={18} color={C.lime} /> 2. التوصية المقترحة
+            <CheckCircle2 size={18} color={C.lime} /> {t.engine.step2}
           </h3>
 
           <div style={{ background: C.creamDark, padding: 14, borderRadius: 10, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ fontSize: isMobile ? 32 : 40 }}>{rec.cropIcon}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16, color: C.forest }}>{rec.crop} — {rec.stage}</div>
-              <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>اليوم {rec.days} · في {rec.region}</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>{t.engine.dayShort} {rec.days} · {t.engine.in} {rec.region}</div>
             </div>
             <div style={{ background: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 11 }}>
-              <div style={{ color: C.muted }}>جودة المياه</div>
+              <div style={{ color: C.muted }}>{t.engine.waterQuality}</div>
               <div style={{ color: C.forest, fontWeight: 700 }}>{rec.waterQuality} ppm TDS</div>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? 8 : 12, marginBottom: 14 }}>
-            <RecCard title="🌡️ الحرارة" value={`${rec.targets.temp[0]} – ${rec.targets.temp[1]}`} unit="°C" color={C.forest} />
-            <RecCard title="💧 الرطوبة" value={`${rec.targets.humidity[0]} – ${rec.targets.humidity[1]}`} unit="%" color="#0EA5E9" />
-            <RecCard title="⚡ EC" value={`${rec.targets.ec[0]} – ${rec.targets.ec[1]}`} unit="mS/cm" color={C.lime} />
-            <RecCard title="🧪 pH" value={`${rec.targets.ph[0]} – ${rec.targets.ph[1]}`} unit="" color="#A855F7" />
+            <RecCard title={t.engine.tempRec} value={`${rec.targets.temp[0]} – ${rec.targets.temp[1]}`} unit="°C" color={C.forest} />
+            <RecCard title={t.engine.humRec} value={`${rec.targets.humidity[0]} – ${rec.targets.humidity[1]}`} unit="%" color="#0EA5E9" />
+            <RecCard title={t.engine.ecRec} value={`${rec.targets.ec[0]} – ${rec.targets.ec[1]}`} unit="mS/cm" color={C.lime} />
+            <RecCard title={t.engine.phRec} value={`${rec.targets.ph[0]} – ${rec.targets.ph[1]}`} unit="" color="#A855F7" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? 8 : 12, marginBottom: 14 }}>
@@ -778,29 +832,30 @@ function CropEngine({ zones, setZones, overrides, setOverrides, isMobile }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 14 }}>
-            <RecCard title="🚿 دورات اليوم" value={rec.irrigation.freq} unit="مرة" color={C.forestLight} />
-            <RecCard title="⏱ مدة الدورة" value={rec.irrigation.duration} unit="ث" color={C.forestLight} />
+            <RecCard title={t.engine.irrFreq} value={rec.irrigation.freq} unit={t.engine.timesUnit} color={C.forestLight} />
+            <RecCard title={t.engine.irrDur} value={rec.irrigation.duration} unit={t.engine.secondsUnit} color={C.forestLight} />
           </div>
 
           <div style={{ background: `${C.lime}15`, border: `1px dashed ${C.lime}`, borderRadius: 8, padding: 12, fontSize: 13, color: C.forest, lineHeight: 1.7 }}>
-            <strong>📍 ملاحظة المنطقة:</strong> {rec.regionNote}
+            <strong>{t.engine.regionNote}:</strong> {rec.regionNote}
           </div>
         </div>
       )}
 
       {/* Apply to Zone */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 14 : 20 }}>
-        <h3 style={{ margin: '0 0 12px', color: C.forest, fontSize: 16, fontWeight: 700 }}>3. تطبيق على منطقة</h3>
+        <h3 style={{ margin: '0 0 12px', color: C.forest, fontSize: 16, fontWeight: 700 }}>{t.engine.step3}</h3>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <select value={applyZone} onChange={e => setApplyZone(e.target.value)} style={{ flex: '1 1 200px', minWidth: 0, padding: '10px 12px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 14, background: '#fff' }}>
             {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
           </select>
           <button onClick={applyToZone} style={{ padding: '10px 22px', background: C.lime, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <Save size={16} /> تطبيق البرنامج
+            <Save size={16} /> {t.engine.applyBtn}
           </button>
         </div>
-        <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>سيتمّ تحديث المحصول والمرحلة والمنطقة للوحدة المختارة وإعادة تعيين أيّ تجاوزات يدوية سابقة.</div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>{t.engine.applyNote}</div>
       </div>
+      <ToastBanner message={toast} type="success" onClose={() => setToast(null)} />
     </div>
   );
 }
@@ -823,18 +878,19 @@ function RecCard({ title, value, unit, color }) {
 // 🟢 3) History Tab — السجل التاريخي مع تحليلات
 // ═══════════════════════════════════════════════════════════════════
 function HistoryTab({ historicalData, zones, isMobile }) {
+  const { t } = useI18n();
   const [metric, setMetric] = useState('tempIn');
   const [compareRegions, setCompareRegions] = useState(['jeddah', 'abha']);
   const [range, setRange] = useState(90);
 
   const metrics = {
-    tempIn:  { label: 'حرارة المحمية', unit: '°C', color: C.forest, optimal: [20, 26] },
-    humIn:   { label: 'الرطوبة',         unit: '%',  color: '#0EA5E9', optimal: [55, 70] },
-    ec:      { label: 'EC الموصلية',      unit: 'mS/cm', color: C.lime, optimal: [2.0, 2.5] },
-    ph:      { label: 'pH الحموضة',       unit: '',  color: '#A855F7', optimal: [5.8, 6.4] },
-    co2:     { label: 'CO₂',              unit: 'ppm', color: '#64748B', optimal: [600, 1200] },
-    water:   { label: 'استهلاك المياه',   unit: 'لتر/يوم', color: '#0891B2', optimal: null },
-    energy:  { label: 'استهلاك الطاقة',   unit: 'kWh/يوم', color: '#F59E0B', optimal: null },
+    tempIn:  { label: t.history.metricTempIn, unit: '°C',                color: C.forest, optimal: [20, 26] },
+    humIn:   { label: t.history.metricHumIn,  unit: '%',                 color: '#0EA5E9', optimal: [55, 70] },
+    ec:      { label: t.history.metricEC,     unit: 'mS/cm',             color: C.lime, optimal: [0.8, 3.5] },
+    ph:      { label: t.history.metricPH,     unit: '',                  color: '#A855F7', optimal: [5.5, 7.5] },
+    co2:     { label: t.history.metricCO2,    unit: 'ppm',               color: '#64748B', optimal: [600, 1200] },
+    water:   { label: t.history.metricWater,  unit: t.history.waterUnit, color: '#0891B2', optimal: null },
+    energy:  { label: t.history.metricEnergy, unit: t.history.energyUnit, color: '#F59E0B', optimal: null },
   };
 
   const m = metrics[metric];
@@ -891,31 +947,31 @@ function HistoryTab({ historicalData, zones, isMobile }) {
   return (
     <div>
       <div style={{ background: `linear-gradient(135deg, #1A5D45 0%, ${C.forest} 100%)`, color: '#fff', borderRadius: 12, padding: 24, marginBottom: 20 }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>السجل التاريخي · 90 يوماً</h2>
-        <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: 14 }}>تحليل تفاعلي للقراءات مع مقارنة بين المناطق وتحليل ذكي للأداء</p>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>{t.history.title}</h2>
+        <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: 14 }}>{t.history.subtitle}</p>
       </div>
 
       {/* Controls */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           <div>
-            <Label text="المتغيّر" />
+            <Label text={t.history.metricLabel} />
             <select value={metric} onChange={e => setMetric(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 14, background: '#fff' }}>
               {Object.entries(metrics).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
           <div>
-            <Label text="النطاق الزمني" />
+            <Label text={t.history.rangeLabel} />
             <div style={{ display: 'flex', gap: 6 }}>
               {[7, 30, 90].map(d => (
                 <button key={d} onClick={() => setRange(d)} style={{ flex: 1, padding: '8px', background: range === d ? C.forest : '#fff', color: range === d ? '#fff' : C.ink, border: `1px solid ${range === d ? C.forest : C.border}`, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>
-                  {d === 7 ? 'أسبوع' : d === 30 ? 'شهر' : '٣ أشهر'}
+                  {d === 7 ? t.common.week : d === 30 ? t.common.month : t.common.threeMonths}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <Label text="مناطق المقارنة" />
+            <Label text={t.history.compareLabel} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {Object.entries(REGIONS).map(([k, r]) => {
                 const sel = compareRegions.includes(k);
@@ -929,7 +985,7 @@ function HistoryTab({ historicalData, zones, isMobile }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button onClick={downloadCSV} style={{ width: '100%', padding: '8px 14px', background: C.forest, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Download size={14} /> تصدير CSV
+              <Download size={14} /> {t.history.exportCsv}
             </button>
           </div>
         </div>
@@ -938,8 +994,8 @@ function HistoryTab({ historicalData, zones, isMobile }) {
       {/* Chart */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 12 : 18, marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <h3 style={{ margin: 0, color: C.forest, fontSize: 15, fontWeight: 700 }}>{m.label} · {range} يوم</h3>
-          {m.optimal && <Badge color={C.lime} text={`النطاق المثالي: ${m.optimal[0]} – ${m.optimal[1]} ${m.unit}`} />}
+          <h3 style={{ margin: 0, color: C.forest, fontSize: 15, fontWeight: 700 }}>{m.label} · {range} {t.engine.dayUnit}</h3>
+          {m.optimal && <Badge color={C.lime} text={`${t.history.optimalRange}: ${m.optimal[0]} – ${m.optimal[1]} ${m.unit}`} />}
         </div>
         <div style={{ width: '100%', height: isMobile ? 240 : 320 }}>
           <ResponsiveContainer>
@@ -970,13 +1026,13 @@ function HistoryTab({ historicalData, zones, isMobile }) {
             <div key={r} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, color: C.forest, fontSize: 15 }}>{region.icon} {region.name}</div>
-                {a.inOptimalPct != null && <Badge color={a.inOptimalPct >= 75 ? C.ok : a.inOptimalPct >= 50 ? C.warn : C.danger} text={`${a.inOptimalPct}% مثالي`} />}
+                {a.inOptimalPct != null && <Badge color={a.inOptimalPct >= 75 ? C.ok : a.inOptimalPct >= 50 ? C.warn : C.danger} text={`${a.inOptimalPct}${t.history.pctOptimal}`} />}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
-                <Stat label="المتوسط" value={a.avg} unit={m.unit} />
-                <Stat label="الانحراف" value={`±${a.std}`} unit={m.unit} />
-                <Stat label="القمة" value={a.max} unit={m.unit} color={C.danger} />
-                <Stat label="القاع" value={a.min} unit={m.unit} color="#0EA5E9" />
+                <Stat label={t.common.average}   value={a.avg} unit={m.unit} />
+                <Stat label={t.common.deviation} value={`±${a.std}`} unit={m.unit} />
+                <Stat label={t.common.peak}      value={a.max} unit={m.unit} color={C.danger} />
+                <Stat label={t.common.trough}    value={a.min} unit={m.unit} color="#0EA5E9" />
               </div>
             </div>
           );
@@ -986,7 +1042,7 @@ function HistoryTab({ historicalData, zones, isMobile }) {
       {/* Smart Insights */}
       <div style={{ background: `linear-gradient(135deg, ${C.lime}10 0%, #fff 100%)`, border: `1px dashed ${C.lime}`, borderRadius: 12, padding: 18 }}>
         <h3 style={{ margin: '0 0 12px', color: C.forest, fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <TrendingUp size={16} color={C.lime} /> التحليل الذكي
+          <TrendingUp size={16} color={C.lime} /> {t.history.smartAnalysis}
         </h3>
         <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.9 }}>
           {generateInsights(analysis, m, compareRegions, metric)}
@@ -1045,7 +1101,11 @@ function generateInsights(analysis, metricMeta, regions, metricKey) {
 // 🟢 4) Zones Settings — إعدادات المناطق
 // ═══════════════════════════════════════════════════════════════════
 function ZonesSettings({ zones, setZones, isMobile }) {
+  const { t, locale, dir } = useI18n();
   const [editingId, setEditingId] = useState(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const editing = zones.find(z => z.id === editingId);
 
   const updateZone = (id, patch) => setZones(zones.map(z => z.id === id ? { ...z, ...patch } : z));
@@ -1055,8 +1115,9 @@ function ZonesSettings({ zones, setZones, isMobile }) {
   };
   const addZone = () => {
     const newId = `zone_${Date.now()}`;
+    const namePrefix = locale === 'ar' ? 'منطقة جديدة' : 'New zone';
     setZones([...zones, {
-      id: newId, name: `منطقة جديدة ${zones.length + 1}`,
+      id: newId, name: `${namePrefix} ${zones.length + 1}`,
       region: 'jeddah', crop: 'lettuce', stage: 'vegetative',
       plantedDate: new Date().toISOString().slice(0, 10),
       area: 50, enabled: true, auto: true,
@@ -1064,43 +1125,52 @@ function ZonesSettings({ zones, setZones, isMobile }) {
     }]);
     setEditingId(newId);
   };
-  const deleteZone = (id) => {
-    if (zones.length <= 1) { alert('لا يمكن حذف آخر منطقة'); return; }
-    if (confirm('هل تريد حذف هذه المنطقة؟')) {
-      setZones(zones.filter(z => z.id !== id));
-      if (editingId === id) setEditingId(null);
+  const requestDeleteZone = (id: string) => {
+    if (zones.length <= 1) {
+      setToastType('error');
+      setToast(t.zones.deleteCancel);
+      return;
     }
+    setPendingDeleteId(id);
+  };
+  const confirmDeleteZone = () => {
+    if (!pendingDeleteId) return;
+    setZones(zones.filter(z => z.id !== pendingDeleteId));
+    if (editingId === pendingDeleteId) setEditingId(null);
+    setPendingDeleteId(null);
+    setToastType('success');
+    setToast(t.zones.deleteSuccess);
   };
 
   if (editing) {
     return (
       <div>
         <button onClick={() => setEditingId(null)} style={{ background: 'none', border: 'none', color: C.forest, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <ChevronLeft size={16} /> العودة لقائمة المناطق
+          {dir === 'rtl' ? <ChevronLeft size={16} /> : <ChevronRight size={16} />} {t.zones.backToList}
         </button>
 
         <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 22 }}>
-          <h3 style={{ margin: '0 0 18px', color: C.forest, fontSize: 17, fontWeight: 700 }}>تحرير: {editing.name}</h3>
+          <h3 style={{ margin: '0 0 18px', color: C.forest, fontSize: 17, fontWeight: 700 }}>{t.zones.editTitle}: {editing.name}</h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14, marginBottom: 18 }}>
-            <Field label="اسم المنطقة">
+            <Field label={t.zones.nameLabel}>
               <input type="text" value={editing.name} onChange={e => updateZone(editing.id, { name: e.target.value })} style={inputStyle} />
             </Field>
-            <Field label="المساحة (م²)">
+            <Field label={t.zones.areaLabel}>
               <input type="number" value={editing.area} onChange={e => updateZone(editing.id, { area: +e.target.value })} style={inputStyle} />
             </Field>
-            <Field label="تاريخ الزراعة">
+            <Field label={t.zones.plantedDateLabel}>
               <input type="date" value={editing.plantedDate} onChange={e => updateZone(editing.id, { plantedDate: e.target.value })} style={inputStyle} />
             </Field>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14, marginBottom: 18 }}>
-            <Field label="المنطقة الجغرافية">
+            <Field label={t.common.region}>
               <select value={editing.region} onChange={e => updateZone(editing.id, { region: e.target.value })} style={inputStyle}>
                 {Object.entries(REGIONS).map(([k, r]) => <option key={k} value={k}>{r.icon} {r.name}</option>)}
               </select>
             </Field>
-            <Field label="نوع المحصول">
+            <Field label={t.common.crop}>
               <select value={editing.crop} onChange={e => {
                 const newCrop = e.target.value;
                 const firstStage = Object.keys(CROP_DB[newCrop].stages)[0];
@@ -1109,28 +1179,28 @@ function ZonesSettings({ zones, setZones, isMobile }) {
                 {Object.entries(CROP_DB).map(([k, c]) => <option key={k} value={k}>{c.icon} {c.name}</option>)}
               </select>
             </Field>
-            <Field label="مرحلة النمو">
+            <Field label={t.common.stage}>
               <select value={editing.stage} onChange={e => updateZone(editing.id, { stage: e.target.value })} style={inputStyle}>
-                {Object.entries(CROP_DB[editing.crop as keyof typeof CROP_DB].stages).map(([k, s]) => { const st = s as { name: string; days: string }; return <option key={k} value={k}>{st.name} (اليوم {st.days})</option>; })}
+                {Object.entries(CROP_DB[editing.crop as keyof typeof CROP_DB].stages).map(([k, s]) => { const st = s as { name: string; days: string }; return <option key={k} value={k}>{st.name} ({t.engine.dayShort} {st.days})</option>; })}
               </select>
             </Field>
           </div>
 
           <div style={{ marginBottom: 18 }}>
-            <Label text="حالة المنطقة" />
+            <Label text={t.zones.statusLabel} />
             <div style={{ display: 'flex', gap: 10 }}>
-              <Toggle checked={editing.enabled} onChange={v => updateZone(editing.id, { enabled: v })} label={editing.enabled ? '🟢 المنطقة نشطة' : '⚪ المنطقة موقوفة'} />
-              <Toggle checked={editing.auto} onChange={v => updateZone(editing.id, { auto: v })} label={editing.auto ? '🤖 تشغيل تلقائي' : '✋ تحكم يدوي'} />
+              <Toggle checked={editing.enabled} onChange={v => updateZone(editing.id, { enabled: v })} label={editing.enabled ? t.zones.enabled : t.zones.disabled} />
+              <Toggle checked={editing.auto} onChange={v => updateZone(editing.id, { auto: v })} label={editing.auto ? t.zones.autoOn : t.zones.autoOff} />
             </div>
           </div>
 
           <div>
-            <Label text="الوحدات المُفعَّلة" />
+            <Label text={t.zones.devicesLabel} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
-              <DeviceToggle name="Climate Switch" desc="مناخ" icon={Thermometer} on={editing.devices.climate} onChange={v => updateDevice(editing.id, 'climate', v)} color={C.forest} />
-              <DeviceToggle name="Fertigation Switch" desc="تسميد" icon={Beaker} on={editing.devices.fertigation} onChange={v => updateDevice(editing.id, 'fertigation', v)} color={C.lime} />
-              <DeviceToggle name="Irrigation Switch" desc="ري" icon={Droplets} on={editing.devices.irrigation} onChange={v => updateDevice(editing.id, 'irrigation', v)} color="#0EA5E9" />
-              <DeviceToggle name="Energy Switch" desc="طاقة" icon={Zap} on={editing.devices.energy} onChange={v => updateDevice(editing.id, 'energy', v)} color="#F59E0B" />
+              <DeviceToggle name={t.live.climateSwitch}     desc={t.zones.devClimate}     icon={Thermometer} on={editing.devices.climate}     onChange={v => updateDevice(editing.id, 'climate',     v)} color={C.forest} />
+              <DeviceToggle name={t.live.fertigationSwitch} desc={t.zones.devFertigation} icon={Beaker}      on={editing.devices.fertigation} onChange={v => updateDevice(editing.id, 'fertigation', v)} color={C.lime} />
+              <DeviceToggle name={t.live.irrigationSwitch}  desc={t.zones.devIrrigation}  icon={Droplets}    on={editing.devices.irrigation}  onChange={v => updateDevice(editing.id, 'irrigation',  v)} color="#0EA5E9" />
+              <DeviceToggle name={t.live.energySwitch}      desc={t.zones.devEnergy}      icon={Zap}         on={editing.devices.energy}      onChange={v => updateDevice(editing.id, 'energy',      v)} color="#F59E0B" />
             </div>
           </div>
         </div>
@@ -1142,11 +1212,11 @@ function ZonesSettings({ zones, setZones, isMobile }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h2 style={{ margin: 0, color: C.forest, fontSize: 22, fontWeight: 900 }}>إدارة المناطق (Zones)</h2>
-          <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4 }}>{zones.length} منطقة · يمكن إضافة عدد غير محدود</div>
+          <h2 style={{ margin: 0, color: C.forest, fontSize: 22, fontWeight: 900 }}>{t.zones.title}</h2>
+          <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 4 }}>{zones.length} {t.zones.countSuffix}</div>
         </div>
         <button onClick={addZone} style={{ padding: '10px 18px', background: C.lime, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Layers size={16} /> + إضافة منطقة
+          <Layers size={16} /> {t.zones.addBtn}
         </button>
       </div>
 
@@ -1170,18 +1240,30 @@ function ZonesSettings({ zones, setZones, isMobile }) {
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
               {Object.entries(z.devices).map(([k, v]) => (
                 <span key={k} style={{ fontSize: 10, padding: '3px 7px', borderRadius: 10, background: v ? C.creamDark : '#fff', color: v ? C.forest : C.muted, border: `1px solid ${C.border}`, fontWeight: 600 }}>
-                  {v ? '●' : '○'} {k === 'climate' ? 'مناخ' : k === 'fertigation' ? 'تسميد' : k === 'irrigation' ? 'ري' : 'طاقة'}
+                  {v ? '●' : '○'} {k === 'climate' ? t.zones.devClimate : k === 'fertigation' ? t.zones.devFertigation : k === 'irrigation' ? t.zones.devIrrigation : t.zones.devEnergy}
                 </span>
               ))}
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setEditingId(z.id)} style={{ flex: 1, padding: '8px', background: C.forest, color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>تحرير</button>
-              <button onClick={() => deleteZone(z.id)} style={{ padding: '8px 12px', background: '#fff', color: C.danger, border: `1px solid ${C.danger}`, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>حذف</button>
+              <button onClick={() => setEditingId(z.id)} style={{ flex: 1, padding: '8px', background: C.forest, color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>{t.common.edit}</button>
+              <button onClick={() => requestDeleteZone(z.id)} style={{ padding: '8px 12px', background: '#fff', color: C.danger, border: `1px solid ${C.danger}`, borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>{t.common.delete}</button>
             </div>
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title={t.zones.deleteConfirmTitle}
+        message={t.zones.deleteConfirmMsg(zones.find(z => z.id === pendingDeleteId)?.name ?? '')}
+        confirmLabel={t.common.delete}
+        cancelLabel={t.common.cancel}
+        danger
+        onConfirm={confirmDeleteZone}
+        onCancel={() => setPendingDeleteId(null)}
+      />
+      <ToastBanner message={toast} type={toastType} onClose={() => setToast(null)} />
     </div>
   );
 }
@@ -1206,6 +1288,77 @@ function Field({ label, children }) {
     <div>
       <div style={{ fontSize: 12, fontWeight: 700, color: C.forest, marginBottom: 6 }}>{label}</div>
       {children}
+    </div>
+  );
+}
+
+// ─── Confirm Dialog (يستبدل window.confirm) ─────────────────────────
+function ConfirmDialog({ open, title, message, confirmLabel = 'تأكيد', cancelLabel = 'إلغاء', danger = false, onConfirm, onCancel }: { open: boolean; title: string; message: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean; onConfirm: () => void; onCancel: () => void }) {
+  if (!open) return null;
+  return (
+    <div role="dialog" aria-modal="true" onClick={e => { if (e.target === e.currentTarget) onCancel(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(15,61,46,0.55)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: '#fff', borderRadius: 12, maxWidth: 420, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontWeight: 800, color: C.forest, fontSize: 15 }}>{title}</div>
+        </div>
+        <div style={{ padding: '14px 18px', fontSize: 13, color: C.inkSoft, lineHeight: 1.7 }}>{message}</div>
+        <div style={{ padding: '12px 18px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 8, justifyContent: 'flex-end', background: C.cream }}>
+          <button onClick={onCancel} style={{ padding: '8px 16px', background: '#fff', color: C.inkSoft, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{cancelLabel}</button>
+          <button onClick={onConfirm} style={{ padding: '8px 16px', background: danger ? C.danger : C.forest, color: '#fff', border: 'none', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── QR Code (يولّد QR صالحاً عبر مكتبة qrcode) ─────────────────────
+function QRCode({ value, size = 96, label }: { value: string; size?: number; label?: string }) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const QR = await import('qrcode');
+        const url = await QR.toDataURL(value, {
+          margin: 1,
+          width: size * 2,
+          errorCorrectionLevel: 'M',
+          color: { dark: '#0F3D2E', light: '#FFFFFF' },
+        });
+        if (!cancelled) setDataUrl(url);
+      } catch (err) {
+        console.warn('[iGarden] QR generation failed:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [value, size]);
+
+  return (
+    <div style={{ width: size, height: size, background: '#fff', borderRadius: 8, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: `1px solid ${C.border}` }} aria-label={label ?? `QR Code: ${value}`}>
+      {dataUrl ? (
+        <img src={dataUrl} alt={label ?? value} width={size - 8} height={size - 8} style={{ display: 'block', width: size - 8, height: size - 8 }} />
+      ) : (
+        <span style={{ fontSize: 9, color: C.muted }}>...</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Toast Banner (يستبدل window.alert) ─────────────────────────────
+function ToastBanner({ message, type = 'success', onClose }: { message: string | null; type?: 'success' | 'error' | 'info'; onClose: () => void }) {
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(onClose, 3500);
+    return () => clearTimeout(t);
+  }, [message, onClose]);
+  if (!message) return null;
+  const palette = type === 'success' ? { bg: '#ECFDF5', border: '#A7F3D0', color: '#166534' }
+                : type === 'error'   ? { bg: '#FEF2F2', border: '#FECACA', color: '#991B1B' }
+                :                      { bg: '#EFF6FF', border: '#BFDBFE', color: '#1E40AF' };
+  return (
+    <div role="status" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 500, background: palette.bg, border: `1px solid ${palette.border}`, color: palette.color, padding: '12px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, maxWidth: 420, boxShadow: '0 10px 30px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      <span style={{ flex: 1, lineHeight: 1.6 }}>{message}</span>
+      <button onClick={onClose} aria-label="إغلاق" style={{ background: 'none', border: 'none', color: palette.color, cursor: 'pointer', fontFamily: 'inherit', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
     </div>
   );
 }
@@ -1285,15 +1438,15 @@ const REPORT_DEFS = [
   },
   {
     id: 'zatca-fatoora',
-    title: 'فاتورة إلكترونية — Fatoora Phase 2',
-    authority: 'هيئة الزكاة والضريبة والجمارك',
-    badge: 'ZATCA E-Invoice',
+    title: 'ربط مفهومي بفاتورة ZATCA — Conceptual Linkage',
+    authority: 'هيئة الزكاة والضريبة والجمارك (مرجعي)',
+    badge: 'ZATCA — Conceptual Demo',
     icon: '🧾',
-    desc: 'فاتورة ضريبية كاملة: بائع/مشتري + بنود + ضريبة 15% + ربط BATCH-ID + QR Fatoora',
-    ref: 'ZATCA Fatoora Phase 2',
-    reportNo: 'INV-2026-04-A-001',
+    desc: 'تصوّر معماري: ربط BATCH-ID بمرجع فاتورة + بنود توضيحية + ضريبة 15% — لا توقيع رقمي ولا QR TLV',
+    ref: 'ZATCA Fatoora Phase 2 (مرجعي)',
+    reportNo: 'DEMO-INV-2026-04-A-001',
     status: 'ready',
-    frequency: 'بالدفعة',
+    frequency: 'بالدفعة (تصوّري)',
     pages: 1,
     lastDate: '2026-05-06',
     accentColor: '#7C3AED',
@@ -1450,7 +1603,7 @@ const getReportMetadata = () => ({
   environment: 'Demo',
   generatedAt: new Date().toISOString(),
   generatedBy: 'Demo System',
-  version:     'Compliance Demo v0.4',
+  version:     'Compliance Demo RC-2 (Bilingual)',
   disclaimer:  'Generated from a demo environment using simulated readings. Not a certification document.',
 });
 
@@ -1605,6 +1758,7 @@ function SystemHealthCard({
 
 // ─── Compliance Tab ───────────────────────────────────────────────────
 function ComplianceTab({ isMobile, historicalData, zones }) {
+  const { t } = useI18n();
   const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits' | 'operational' | 'roles' | 'api'>('scores');
   const [reportModal, setReportModal] = useState<string | null>(null);
   const [auditZone, setAuditZone]     = useState('all');
@@ -1622,14 +1776,14 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
   const activeFarmCode = liveData?.activeFarmCode  ?? 'DEMO-001';
 
   const sections = [
-    { id: 'scores',       label: '🏆 درجة الامتثال',  icon: ShieldCheck },
-    { id: 'reports',      label: '📄 مكتبة التقارير',  icon: FileText    },
-    { id: 'audit',        label: '🕐 سجل المراجعة',    icon: Clock       },
-    { id: 'traceability', label: '🔗 تتبع الدفعات',    icon: Leaf        },
-    { id: 'limits',       label: '🏛️ حدود النظام',    icon: ShieldCheck },
-    { id: 'operational',  label: '📊 سجلات التشغيل',  icon: Clock       },
-    { id: 'roles',        label: '👥 الأدوار',          icon: ShieldCheck },
-    { id: 'api',          label: '🔌 خريطة الحقول',    icon: FileText    },
+    { id: 'scores',       label: t.compliance.sec.scores,       icon: ShieldCheck },
+    { id: 'reports',      label: t.compliance.sec.reports,      icon: FileText    },
+    { id: 'audit',        label: t.compliance.sec.audit,        icon: Clock       },
+    { id: 'traceability', label: t.compliance.sec.traceability, icon: Leaf        },
+    { id: 'limits',       label: t.compliance.sec.limits,       icon: ShieldCheck },
+    { id: 'operational',  label: t.compliance.sec.operational,  icon: Clock       },
+    { id: 'roles',        label: t.compliance.sec.roles,        icon: ShieldCheck },
+    { id: 'api',          label: t.compliance.sec.api,          icon: FileText    },
   ];
 
   const allAudit: AuditEntry[] = useMemo(
@@ -1667,22 +1821,29 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
         <div style={{ position: 'absolute', top: -30, left: -20, fontSize: 160, opacity: 0.05, pointerEvents: 'none' }}>🛡️</div>
         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 10, alignItems: 'center' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'rgba(124,179,66,0.18)', borderRadius: 14, fontSize: 11, fontWeight: 700, color: C.lime, border: `1px solid ${C.lime}40` }}>
-            🇸🇦 MEWA · SFDA · Saudi GAP · ZATCA
+            {t.compliance.bannerCountries}
           </div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 14, fontSize: 10, fontWeight: 700, border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.85)' }}>
-            {dataLoading ? '⏳ جاري التحقق من المصدر…'
-              : dataSource === 'supabase' ? '🟢 مصدر البيانات: قاعدة ديمو Supabase'
-              : '🔵 مصدر البيانات: بيانات محلية محاكاة'}
+            {dataLoading ? t.compliance.bannerLoading
+              : dataSource === 'supabase' ? t.compliance.bannerSupabase
+              : t.compliance.bannerMock}
           </div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 14, fontSize: 10, fontWeight: 700, background: 'rgba(253,186,116,0.15)', border: '1px solid rgba(253,186,116,0.5)', color: '#FDE68A' }}>
-            🚀 Release Candidate · Compliance Readiness Demo · Not a Certification Product
+            {t.compliance.bannerRC}
           </div>
         </div>
-        <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900 }}>طبقة الامتثال السعودي</h2>
+        <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900 }}>{t.compliance.title}</h2>
         <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: isMobile ? 12 : 14 }}>
-          مراقبة الامتثال لمعايير MEWA وSFDA.FD 382/2018 وSaudi GAP وZATCA Fatoora
+          {t.compliance.subtitle}
         </p>
       </div>
+
+      {/* Partial-translation notice (EN only) */}
+      {t.compliance.partialTranslationNotice && (
+        <div role="note" style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#92400E', lineHeight: 1.7 }}>
+          {t.compliance.partialTranslationNotice}
+        </div>
+      )}
 
       {/* Auth Status — Sprint 9D/10B */}
       {auth.configured && <AuthStatusPanel auth={auth} dataSource={dataSource} dataLoading={dataLoading} />}
@@ -1755,6 +1916,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
 
 // ─── Section 1: درجة الامتثال per Zone ───
 function ComplianceScores({ isMobile, historicalData }) {
+  const { t } = useI18n();
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 20 }}>
@@ -1764,7 +1926,7 @@ function ComplianceScores({ isMobile, historicalData }) {
           const hasData   = hist.length > 0;
           const sc        = score;
           const statusCol = sc >= 95 ? C.ok : sc >= 85 ? '#F59E0B' : '#DC2626';
-          const statusTxt = sc >= 95 ? '🟢 ممتثل' : sc >= 85 ? '🟡 يحتاج مراجعة' : '🔴 خارج النطاق';
+          const statusTxt = sc >= 95 ? t.compliance.compliant : sc >= 85 ? t.compliance.needReview : t.compliance.outOfRange;
 
           return (
             <div key={rk} style={{ background: '#fff', border: `2px solid ${statusCol}40`, borderRadius: 12, padding: 18 }}>
@@ -1780,7 +1942,7 @@ function ComplianceScores({ isMobile, historicalData }) {
                   <div style={{ fontSize: 26, fontWeight: 900, color: hasData ? statusCol : C.muted, fontVariantNumeric: 'tabular-nums' }}>
                     {hasData ? sc : '—'}%
                   </div>
-                  <div style={{ fontSize: 9, color: C.muted }}>آخر 30 يوم</div>
+                  <div style={{ fontSize: 9, color: C.muted }}>{t.compliance.last30}</div>
                 </div>
               </div>
 
@@ -1788,16 +1950,16 @@ function ComplianceScores({ isMobile, historicalData }) {
 
               {deviations > 0 && (
                 <div style={{ marginTop: 8, fontSize: 11, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <AlertTriangle size={12} /> {deviations} انحراف مسجّل
+                  <AlertTriangle size={12} /> {deviations} {t.compliance.deviationLogged}
                 </div>
               )}
 
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {[
-                  { label: 'سجل قراءات يومية',         ok: hist.length >= 25 },
-                  { label: 'ضمن نطاق pH (5.5–7.5)',     ok: sc >= 90 },
-                  { label: 'مرجع MEWA-AGR-LAW-IR',      ok: true },
-                  { label: 'تتبع Saudi GAP',             ok: sc >= 85 },
+                  { label: t.compliance.dailyReadings,                ok: hist.length >= 25 },
+                  { label: t.compliance.pHRangeOk,                    ok: sc >= 90 },
+                  { label: t.compliance.mewaRef,                       ok: true },
+                  { label: t.compliance.gapTracking,                   ok: sc >= 85 },
                 ].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.inkSoft }}>
                     <span style={{ color: item.ok ? C.ok : '#F59E0B', fontWeight: 700, flexShrink: 0 }}>{item.ok ? '✓' : '○'}</span>
@@ -1812,15 +1974,17 @@ function ComplianceScores({ isMobile, historicalData }) {
 
       {/* القيم المرجعية */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
-        <h3 style={{ margin: '0 0 14px', color: C.forest, fontSize: 15, fontWeight: 700 }}>القيم المرجعية المعتمدة (Saudi GAP / MEWA)</h3>
+        <h3 style={{ margin: '0 0 14px', color: C.forest, fontSize: 15, fontWeight: 700 }}>{t.compliance.refsCardTitle}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 12 }}>
-          <RecCard title="🧪 pH المياه"    value="5.5 – 7.5" unit=""      color="#A855F7" />
-          <RecCard title="⚡ EC المياه"    value="≤ 2.5"     unit="mS/cm" color={C.lime}  />
-          <RecCard title="💧 TDS"          value="≤ 1500"    unit="ppm"   color="#0EA5E9" />
-          <RecCard title="☢️ الكلور الحر" value="≤ 0.5"     unit="mg/L"  color="#F59E0B" />
+          <RecCard title="🧪 pH"            value="5.5 – 7.5" unit=""      color="#A855F7" />
+          <RecCard title="⚡ EC"             value="≤ 3.5"     unit="mS/cm" color={C.lime}  />
+          <RecCard title="💧 TDS"           value="≤ 1500"    unit="ppm"   color="#0EA5E9" />
+          <RecCard title="☢️ Cl₂"           value="≤ 0.5"     unit="mg/L"  color="#F59E0B" />
         </div>
-        <div style={{ fontSize: 11, color: C.muted }}>
-          المرجع: Saudi GAP / MEWA Agriculture Law Implementing Regulations · SFDA.FD 382/2018
+        <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.7 }}>
+          {t.compliance.refsCardSource}
+          <br />
+          <span style={{ color: C.warn }}>{t.common.note}:</span> {t.compliance.refsCardEcNote}
         </div>
       </div>
     </div>
@@ -1829,6 +1993,7 @@ function ComplianceScores({ isMobile, historicalData }) {
 
 // ─── Section 2: مكتبة التقارير ───
 function ReportsLibrary({ isMobile, historicalData, zones, setReportModal, activeFarmId = null, activeFarmCode = 'DEMO-001' }: { isMobile: boolean; historicalData: any; zones: any[]; setReportModal: (v: string) => void; activeFarmId?: string | null; activeFarmCode?: string }) {
+  const { t } = useI18n();
 
   const buildCsvWithMeta = (headers: string[], dataRows: string[][]) => {
     const m = getReportMetadata();
@@ -1869,186 +2034,260 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal, activ
   };
 
   const generateCompliancePDF = async () => {
-    const { jsPDF } = await import('jspdf');
-    const autoTable = (await import('jspdf-autotable')).default;
     const meta = getReportMetadata();
     const reportId = createReportId();
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = 210;
-    const mg = 14;
-    const cW = pageW - mg * 2;
-    let y = 0;
+    const today = new Date().toISOString().slice(0, 10);
 
-    // Header bar
-    doc.setFillColor(15, 61, 46);
-    doc.rect(0, 0, pageW, 36, 'F');
-    doc.setTextColor(124, 179, 66);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text('iGarden Smart OS  |  COMPLIANCE READINESS REPORT  |  DEMO - Simulated Data Only', mg, 9);
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(15);
-    doc.text('Compliance Readiness Report', mg, 21);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.text(`${meta.generatedAt.slice(0,10)}  |  Farm: ${activeFarmCode}  |  ${meta.version}`, mg, 29);
-    doc.setTextColor(124, 179, 66);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('DEMO MODE', pageW - mg, 29, { align: 'right' });
-    y = 42;
+    // ─── 1) ابنِ HTML العربي للتقرير في DOM مخفي ─────────────────────
+    const container = document.createElement('div');
+    container.dir = 'rtl';
+    container.lang = 'ar';
+    container.style.cssText = [
+      'position: fixed',
+      'top: -10000px',
+      'left: 0',
+      'width: 794px',                 // A4 ≈ 210mm @ 96dpi
+      'background: #fff',
+      "font-family: 'Tajawal', 'Segoe UI', system-ui, sans-serif",
+      'color: #1F2937',
+      'padding: 0',
+      'margin: 0',
+    ].join(';');
 
-    // Disclaimer box
-    doc.setFillColor(255, 251, 235);
-    doc.setDrawColor(253, 230, 138);
-    doc.roundedRect(mg, y, cW, 16, 2, 2, 'FD');
-    doc.setTextColor(146, 64, 14);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('DISCLAIMER:', mg + 3, y + 6);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.text(meta.disclaimer, mg + 28, y + 6);
-    doc.text('Saudi GAP / MEWA / SFDA / ZATCA references are for structural alignment purposes only. Official certification requires accredited inspectors.', mg + 3, y + 12);
-    y = 63;
-
-    // Metadata table
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
-    doc.text('Report Metadata', mg, y); y += 4;
-    autoTable(doc, {
-      startY: y,
-      head: [['Field', 'Value']],
-      body: [
-        ['Report ID',   reportId],
-        ['Farm Code',   activeFarmCode],
-        ['Data Mode',   meta.dataMode],
-        ['Environment', meta.environment],
-        ['Generated',   meta.generatedAt],
-        ['Version',     meta.version],
-      ],
-      theme: 'plain',
-      headStyles: { fillColor: [15,61,46], textColor: 255, fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8, textColor: [31,41,55] },
-      alternateRowStyles: { fillColor: [250,250,247] },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 38 }, 1: { cellWidth: cW - 38 } },
-      margin: { left: mg, right: mg }, tableWidth: cW,
-    });
-    y = (doc as any).lastAutoTable.finalY + 8;
-
-    // Saudi GAP Readiness
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
-    doc.text('Saudi GAP Readiness Checklist', mg, y); y += 4;
-    autoTable(doc, {
-      startY: y,
-      head: [['Requirement', 'Status', 'Notes']],
-      body: [
-        ['Sensor Calibration Records',     'Partial',         'Demo calibration log — 6 devices'],
-        ['Irrigation Water Documentation', 'Partial',         'Demo water source log available'],
-        ['Input Usage Log',                'Partial',         '6 entries with batch linkage'],
-        ['Batch Traceability Records',     'Demo Ready',      '2 batches, full lifecycle tracked'],
-        ['Pest / Disease Log',             'In Development',  'Not yet implemented'],
-        ['Harvest Quality Records',        'In Development',  'Not yet implemented'],
-        ['Worker Training Records',        'Requires Lab',    'Out of scope for demo'],
-        ['Soil / Substrate Analysis',      'Requires Lab',    'Requires third-party laboratory'],
-      ],
-      theme: 'striped',
-      headStyles: { fillColor: [124,179,66], textColor: 255, fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8 },
-      columnStyles: { 0: { cellWidth: 72 }, 1: { cellWidth: 32 }, 2: { cellWidth: cW - 104 } },
-      margin: { left: mg, right: mg }, tableWidth: cW,
-    });
-    y = (doc as any).lastAutoTable.finalY + 8;
-
-    // Audit Events
-    if (y > 230) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
-    doc.text('Audit Trail — Recent Events', mg, y); y += 4;
-    autoTable(doc, {
-      startY: y,
-      head: [['Event ID', 'Timestamp', 'Zone', 'Actor', 'Action', 'Hash']],
-      body: ENHANCED_AUDIT_EVENTS.map(e => [e.id, e.ts, e.zone, e.actor, e.action, e.hash]),
-      theme: 'striped',
-      headStyles: { fillColor: [15,61,46], textColor: 255, fontSize: 7, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7 },
-      margin: { left: mg, right: mg }, tableWidth: cW,
-    });
-    y = (doc as any).lastAutoTable.finalY + 8;
-
-    // Batch Traceability
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
-    doc.text('Batch Traceability', mg, y); y += 4;
-    autoTable(doc, {
-      startY: y,
-      head: [['Batch ID', 'Crop', 'Planting', 'Harvest', 'Water Source', 'Status']],
-      body: BATCH_DATA.map(b => [b.batchId, b.crop.replace(/[^\w\s-]/g,'').trim(), b.planting, b.harvest, b.water, b.statusLabel]),
-      theme: 'striped',
-      headStyles: { fillColor: [37,99,235], textColor: 255, fontSize: 7, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7.5 },
-      margin: { left: mg, right: mg }, tableWidth: cW,
-    });
-    y = (doc as any).lastAutoTable.finalY + 8;
-
-    // Audit Chain Integrity
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
-    doc.text('Audit Chain Integrity — Tamper-evident Demo Structure', mg, y); y += 4;
+    const firstKey = Object.keys(REGIONS)[0];
+    const hist = (historicalData[firstKey] || []) as Array<{ dateFull: string; ph: number; ec: number; tempIn: number; humIn: number }>;
+    const last30 = hist.slice(-30);
+    const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const avgPH = avg(last30.map(r => r.ph));
+    const avgEC = avg(last30.map(r => r.ec));
+    const phPass = last30.filter(r => r.ph >= 5.5 && r.ph <= 7.5).length;
+    const ecPass = last30.filter(r => r.ec <= 3.5).length;
+    const compliancePct = last30.length ? Math.round(((phPass + ecPass) / (last30.length * 2)) * 100) : 0;
+    const phPctOk = last30.length ? Math.round((phPass / last30.length) * 100) : 0;
+    const ecPctOk = last30.length ? Math.round((ecPass / last30.length) * 100) : 0;
     const cs = AUDIT_CHAIN_SUMMARY;
-    autoTable(doc, {
-      startY: y,
-      head: [['Metric', 'Value']],
-      body: [
-        ['Verification Mode', cs.verificationMode],
-        ['Chain Status',      cs.chainStatus],
-        ['Events Checked',    String(cs.eventsChecked)],
-        ['Broken Links',      String(cs.brokenLinks)],
-        ['Last Event Hash',   cs.lastEventHash],
-        ['Disclaimer',        cs.disclaimer],
-      ],
-      theme: 'plain',
-      headStyles: { fillColor: [15,61,46], textColor: 255, fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8 },
-      alternateRowStyles: { fillColor: [250,250,247] },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 }, 1: { cellWidth: cW - 40 } },
-      margin: { left: mg, right: mg }, tableWidth: cW,
-    });
-    y = (doc as any).lastAutoTable.finalY + 8;
 
-    // Audit Versioning
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(15, 61, 46);
-    doc.text('Audit Versioning Rules', mg, y); y += 4;
-    autoTable(doc, {
-      startY: y,
-      head: [['Object', 'Versioning Rule', 'Demo Status']],
-      body: AUDIT_VERSIONING.map(r => [r.object, r.versioningRule, r.demoStatus]),
-      theme: 'striped',
-      headStyles: { fillColor: [124,179,66], textColor: 255, fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8 },
-      columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: cW - 65 }, 2: { cellWidth: 30 } },
-      margin: { left: mg, right: mg }, tableWidth: cW,
-    });
+    const escapeHTML = (s: string) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 
-    // Footer on every page
-    const total = doc.getNumberOfPages();
-    for (let i = 1; i <= total; i++) {
-      doc.setPage(i);
-      doc.setFillColor(240, 239, 232);
-      doc.rect(0, 282, pageW, 15, 'F');
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(107, 114, 128);
-      doc.text(`iGarden Smart OS — Demo Compliance Report  |  Page ${i} of ${total}  |  Farm: ${activeFarmCode}`, mg, 289);
-      doc.text('DEMO DATA ONLY — Not for official submission', pageW - mg, 289, { align: 'right' });
+    const tableRow = (cells: string[], i: number) => `
+      <tr style="background:${i % 2 === 0 ? '#fff' : '#FAFAF7'}">
+        ${cells.map(c => `<td style="padding:6px 9px;border:1px solid #E5E1D8;font-size:10px;color:#1F2937">${c}</td>`).join('')}
+      </tr>`;
+
+    container.innerHTML = `
+      <style>
+        .rpt * { box-sizing: border-box; }
+        .rpt h1, .rpt h2, .rpt h3 { margin: 0; }
+        .rpt th { padding: 7px 9px; background: #F0EFE8; color: #0F3D2E; font-size: 10px; text-align: right; border: 1px solid #E5E1D8; font-weight: 700; }
+      </style>
+      <div class="rpt" style="width:794px">
+        <!-- Header -->
+        <div style="background:linear-gradient(180deg,#0F3D2E,#08291E);color:#fff;padding:22px 28px;border-bottom:4px solid #7CB342">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#9BCB5E;margin-bottom:6px">
+            <span>iGarden Smart OS · تقرير جاهزية الامتثال</span>
+            <span style="background:rgba(124,179,66,0.18);border:1px solid #7CB34255;padding:3px 10px;border-radius:14px;font-weight:700">DEMO MODE — بيانات محاكاة</span>
+          </div>
+          <h1 style="font-size:22px;font-weight:900;letter-spacing:-0.01em;margin-bottom:6px">تقرير جاهزية الامتثال</h1>
+          <div style="font-size:12px;color:#C7E0A8">
+            ${escapeHTML(today)} · المزرعة: ${escapeHTML(activeFarmCode)} · ${escapeHTML(meta.version)}
+          </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div style="margin:16px 24px;padding:12px 14px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:11px;color:#92400E;line-height:1.7">
+          <strong>إفصاح:</strong> ${escapeHTML(DISCLAIMER_TEXT)}
+          <br />
+          المراجع التنظيمية (MEWA / SFDA / Saudi GAP / ZATCA) مذكورة لأغراض التوافق المعماري فقط. الشهادة الرسمية تتطلب جهة معتمدة ومفتشاً معتمداً.
+        </div>
+
+        <!-- Section: Metadata -->
+        <div style="margin:20px 24px">
+          <h2 style="font-size:14px;color:#0F3D2E;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #7CB342">البيانات الوصفية للتقرير</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              ${[
+                ['رقم التقرير', reportId],
+                ['كود المزرعة', activeFarmCode],
+                ['وضع البيانات', meta.dataMode],
+                ['البيئة', meta.environment],
+                ['تاريخ الإنشاء', meta.generatedAt],
+                ['الإصدار', meta.version],
+                ['البائع/المعد', meta.generatedBy],
+              ].map(([k, v], i) => `
+                <tr style="background:${i % 2 === 0 ? '#fff' : '#FAFAF7'}">
+                  <td style="padding:7px 10px;border:1px solid #E5E1D8;font-size:11px;font-weight:700;color:#0F3D2E;width:35%">${escapeHTML(k)}</td>
+                  <td style="padding:7px 10px;border:1px solid #E5E1D8;font-size:11px;color:#1F2937;font-family:monospace">${escapeHTML(v)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Section: Compliance Summary -->
+        <div style="margin:20px 24px">
+          <h2 style="font-size:14px;color:#0F3D2E;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #7CB342">ملخص الامتثال — آخر 30 يوم</h2>
+          <div style="display:flex;gap:10px;margin-bottom:10px">
+            ${[
+              { label: 'متوسط pH', value: avgPH.toFixed(2), ok: avgPH >= 5.5 && avgPH <= 7.5, ref: '5.5 – 7.5' },
+              { label: 'متوسط EC', value: avgEC.toFixed(2) + ' mS', ok: avgEC <= 3.5, ref: '≤ 3.5 mS/cm' },
+              { label: 'نسبة الامتثال', value: compliancePct + '%', ok: compliancePct >= 85, ref: 'الهدف 85%' },
+              { label: 'pH داخل النطاق', value: phPctOk + '%', ok: phPctOk >= 85, ref: phPass + '/' + last30.length },
+              { label: 'EC داخل النطاق', value: ecPctOk + '%', ok: ecPctOk >= 85, ref: ecPass + '/' + last30.length },
+            ].map(kpi => `
+              <div style="flex:1;background:#fff;border:1px solid ${kpi.ok ? '#A7F3D0' : '#FCA5A5'};border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:9px;color:#9CA3AF">${escapeHTML(kpi.label)}</div>
+                <div style="font-size:18px;font-weight:900;color:${kpi.ok ? '#059669' : '#B91C1C'};line-height:1.1;margin:4px 0">${escapeHTML(kpi.value)}</div>
+                <div style="font-size:9px;color:#9CA3AF">${escapeHTML(kpi.ref)}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Section: Saudi GAP Readiness -->
+        <div style="margin:20px 24px">
+          <h2 style="font-size:14px;color:#0F3D2E;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #7CB342">قائمة جاهزية Saudi GAP — 8 بنود</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>${['#','البند','المتطلب','الحالة','الملاحظة'].map(h => `<th>${h}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${[
+                ['1', 'جودة مياه الري',          'pH 5.5–7.5 · EC ≤ 3.5',     '✓ مُقاس بالنظام',                  `pH ${avgPH.toFixed(2)} (${phPctOk}%) · EC ${avgEC.toFixed(2)} (${ecPctOk}%)`],
+                ['2', 'متبقيات المبيدات MRL',   'SFDA.FD 382/2018',           '⊘ خارج النطاق',                    'يتطلب مختبراً معتمداً من SFDA'],
+                ['3', 'تتبع رقمي للدفعات',       'BATCH-ID + Hash chain',      '✓ مُقاس بالنظام',                  'Hash chain موثّق في audit_events'],
+                ['4', 'نظافة المنشأة',            'بروتوكول تعقيم موثّق',        '⊘ خارج النطاق',                    'يتطلب توثيقاً تشغيلياً بشرياً'],
+                ['5', 'كفاءة استخدام المياه',     'ترشيد ≥ 50% vs تقليدي',      '✓ مُقاس بالنظام',                  'محسوب من قراءات 30 يوم'],
+                ['6', 'تسجيل العمال',              'هويات + أدوار',               '✓ مُقاس بالنظام',                  '5 أدوار محددة في النموذج'],
+                ['7', 'تخزين ونقل المنتج',         'سلسلة تبريد < 6°C',           '⊘ خارج النطاق',                    'يتطلب logger خارجي'],
+                ['8', 'التدريب والكفاءة',           'شهادات Saudi GAP',           '⊘ خارج النطاق',                    'توثيق خارج النظام'],
+              ].map((r, i) => tableRow(r.map(escapeHTML), i)).join('')}
+            </tbody>
+          </table>
+          <div style="margin-top:8px;padding:8px 10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:6px;font-size:10px;color:#7C2D12;line-height:1.6">
+            <strong>ملاحظة:</strong> "مُقاس بالنظام" = توفّر بيانات تشغيلية تدعم البند. "خارج النطاق" = توثيق بشري أو مختبر خارجي مطلوب.
+          </div>
+        </div>
+
+        <!-- Section: Audit Events -->
+        <div style="margin:20px 24px;page-break-inside:auto">
+          <h2 style="font-size:14px;color:#0F3D2E;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #7CB342">سجل المراجعة — أحدث الأحداث</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>${['Event ID','الوقت','المنطقة','المشغّل','الإجراء','Hash'].map(h => `<th style="font-size:9px">${h}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${ENHANCED_AUDIT_EVENTS.map((e, i) => tableRow([e.id, e.ts, e.zone, e.actor, e.action, e.hash].map(escapeHTML), i)).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Section: Batch Traceability -->
+        <div style="margin:20px 24px">
+          <h2 style="font-size:14px;color:#0F3D2E;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #7CB342">تتبع الدفعات</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>${['Batch ID','المحصول','الزراعة','الحصاد','مصدر المياه','الحالة'].map(h => `<th>${h}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${BATCH_DATA.map((b, i) => tableRow([b.batchId, b.crop, b.planting, b.harvest, b.water, b.statusLabel].map(escapeHTML), i)).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Section: Audit Chain Integrity -->
+        <div style="margin:20px 24px">
+          <h2 style="font-size:14px;color:#0F3D2E;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #7CB342">سلامة سلسلة التدقيق</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <tbody>
+              ${[
+                ['وضع التحقق', cs.verificationMode],
+                ['حالة السلسلة', cs.chainStatus],
+                ['عدد الأحداث المفحوصة', String(cs.eventsChecked)],
+                ['روابط مكسورة', String(cs.brokenLinks)],
+                ['آخر Event Hash', cs.lastEventHash],
+              ].map(([k, v], i) => `
+                <tr style="background:${i % 2 === 0 ? '#fff' : '#FAFAF7'}">
+                  <td style="padding:7px 10px;border:1px solid #E5E1D8;font-size:11px;font-weight:700;color:#0F3D2E;width:35%">${escapeHTML(k)}</td>
+                  <td style="padding:7px 10px;border:1px solid #E5E1D8;font-size:11px;color:#1F2937;font-family:monospace">${escapeHTML(v)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <div style="margin-top:8px;padding:8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:10px;color:#92400E;line-height:1.6">
+            ${escapeHTML(cs.disclaimer)}
+          </div>
+        </div>
+
+        <!-- Section: Versioning Rules -->
+        <div style="margin:20px 24px">
+          <h2 style="font-size:14px;color:#0F3D2E;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #7CB342">قواعد إصدارات السجل</h2>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>${['الكيان','بالعربية','قاعدة الإصدار','الحالة'].map(h => `<th>${h}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${AUDIT_VERSIONING.map((r, i) => tableRow([r.object, r.ar, r.versioningRule, r.demoStatus].map(escapeHTML), i)).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer Note -->
+        <div style="margin:24px;padding:14px;background:#0F3D2E;color:#9BCB5E;border-radius:8px;font-size:10px;line-height:1.7;text-align:center">
+          iGarden Smart OS — Demo Compliance Report · لا يصلح للتقديم الرسمي · DEMO DATA ONLY
+          <br />
+          المراجع: MEWA-AGR-LAW-IR · SFDA.FD 382/2018 · Saudi GAP · ZATCA Fatoora Phase 2
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(container);
+
+    let pdfBlob: Blob | null = null;
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      // ─── 2) التقط الـ DOM كـ canvas ───────────────────────────────
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      // ─── 3) قسّم على صفحات A4 وأضفها لـ jsPDF ────────────────────
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = 210;
+      const pageH = 297;
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+      let heightLeft = imgH;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+
+      // ─── 4) Footer رقم الصفحة على كل صفحة ─────────────────────────
+      const total = pdf.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(7);
+        pdf.setTextColor(107, 114, 128);
+        pdf.text(`Page ${i} / ${total} · iGarden Smart OS · DEMO`, pageW - 14, pageH - 5, { align: 'right' });
+      }
+
+      pdfBlob = pdf.output('blob') as Blob;
+      pdf.save(`igarden-compliance-report-${today}.pdf`);
+    } finally {
+      if (container.parentNode) container.parentNode.removeChild(container);
     }
 
-    const pdfBlob = doc.output('blob') as Blob;
-    doc.save(`igarden-compliance-report-${new Date().toISOString().slice(0,10)}.pdf`);
+    if (!pdfBlob) return;
 
     void (async () => {
       if (!activeFarmId) {
         console.info('[iGarden] Report export not logged: no activeFarmId available.');
         return;
       }
-      const uploadResult = await uploadComplianceReportPdf({ reportId, pdfBlob });
+      const uploadResult = await uploadComplianceReportPdf({ reportId, pdfBlob: pdfBlob! });
       await logReportExport({
         reportId,
         farmId:      activeFarmId,
@@ -2067,22 +2306,22 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal, activ
 
       {/* Farm Context Badge */}
       <div style={{ background: '#F8FAFC', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontWeight: 700, color: C.forest }}>سياق المزرعة:</span>
+        <span style={{ fontWeight: 700, color: C.forest }}>{t.compliance.farmContext}</span>
         <span style={{ fontWeight: 600 }}>{activeFarmCode}</span>
         <span style={{ color: '#94A3B8', margin: '0 4px' }}>·</span>
-        <span>{activeFarmId ? `سيتم ربط التقرير بـ farm_id: ${activeFarmId.slice(0, 8)}…` : 'لا يوجد farm_id حي — تصدير ديمو فقط'}</span>
+        <span>{activeFarmId ? t.compliance.farmIdLinked(activeFarmId.slice(0, 8)) : t.compliance.farmIdNone}</span>
       </div>
 
       {/* Quick Exports */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
-        <div style={{ fontWeight: 800, fontSize: 14, color: C.forest, marginBottom: 4 }}>تصدير سريع</div>
-        <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>هذه التقارير تجريبية لعرض طريقة تنظيم البيانات. لا تُعد مستندات رسمية قبل مراجعتها من جهة مختصة.</div>
+        <div style={{ fontWeight: 800, fontSize: 14, color: C.forest, marginBottom: 4 }}>{t.compliance.quickExport}</div>
+        <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>{t.compliance.quickExportNote}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {[
-            { label: '📊 تقرير الامتثال PDF',        action: () => void generateCompliancePDF(),                                                    color: '#0F3D2E' },
-            { label: '📋 ملف جاهزية Saudi GAP PDF',  action: () => { setReportModal('saudi-gap');       setTimeout(() => window.print(), 400); }, color: '#7CB342' },
-            { label: '📦 تقرير تتبع الدفعات CSV',   action: downloadGAPCSV,                                                                        color: '#2563EB' },
-            { label: '🕐 سجل التدقيق CSV',           action: downloadAuditCSVDirect,                                                                color: '#6B7280' },
+            { label: t.compliance.pdfBtn,      action: () => void generateCompliancePDF(),                                                    color: '#0F3D2E' },
+            { label: t.compliance.gapPdfBtn,   action: () => { setReportModal('saudi-gap');       setTimeout(() => window.print(), 400); }, color: '#7CB342' },
+            { label: t.compliance.batchCsvBtn, action: downloadGAPCSV,                                                                        color: '#2563EB' },
+            { label: t.compliance.auditCsvBtn, action: downloadAuditCSVDirect,                                                                color: '#6B7280' },
           ].map(({ label, action, color }) => (
             <button key={label} onClick={action} style={{ padding: '9px 16px', background: color, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
               {label}
@@ -2107,21 +2346,21 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal, activ
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.ok, background: '#ECFDF5', padding: '3px 9px', borderRadius: 20, border: '1px solid #A7F3D0' }}>✅ جاهز للإرسال</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#92400E', background: '#FEF3C7', padding: '3px 9px', borderRadius: 20, border: '1px solid #FDE68A' }}>{t.compliance.readyForPreview}</span>
               <span style={{ fontSize: 10, fontFamily: 'monospace', color: C.inkSoft, background: C.creamDark, padding: '3px 8px', borderRadius: 6 }}>{report.reportNo}</span>
             </div>
             <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.65 }}>{report.desc}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: C.muted }}>
-              <span>🔄 {report.frequency}</span>
-              <span>📄 {report.pages} صفحات</span>
-              <span>📅 {report.lastDate}</span>
+              <span>{t.compliance.statusCycle} {report.frequency}</span>
+              <span>{t.compliance.pagesIcon} {report.pages} {t.compliance.pagesUnit}</span>
+              <span>{t.compliance.dateIcon} {report.lastDate}</span>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
               <button
                 onClick={() => setReportModal(report.id)}
                 style={{ flex: 1, padding: '9px 12px', background: report.accentColor, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               >
-                <Eye size={14} /> معاينة
+                <Eye size={14} /> {t.common.preview}
               </button>
               <button
                 onClick={() => { setReportModal(report.id); setTimeout(() => window.print(), 400); }}
@@ -2156,7 +2395,7 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
   const avgTemp = avg(last30.map(r => r.tempIn));
   const avgHum  = avg(last30.map(r => r.humIn));
   const phPass  = last30.filter(r => r.ph >= 5.5 && r.ph <= 7.5).length;
-  const ecPass  = last30.filter(r => r.ec <= 2.5).length;
+  const ecPass  = last30.filter(r => r.ec <= 3.5).length;
   const tpPass  = last30.filter(r => r.tempIn >= 18 && r.tempIn <= 30).length;
   const deviations    = (last30.length - phPass) + (last30.length - ecPass) + (last30.length - tpPass);
   const compliancePct = last30.length ? Math.round(((phPass + ecPass + tpPass) / (last30.length * 3)) * 100) : 0;
@@ -2170,8 +2409,8 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
   const autoRecs: string[] = [];
   if (avgPH < 6.0)  autoRecs.push('⚙️ رفع pH — المتوسط (' + avgPH.toFixed(2) + ') أقل من الحد الأمثل 6.0');
   if (avgPH > 7.0)  autoRecs.push('⚙️ خفض pH — المتوسط (' + avgPH.toFixed(2) + ') تجاوز 7.0');
-  if (avgEC > 2.0)  autoRecs.push('⚙️ تخفيف المحلول — EC (' + avgEC.toFixed(2) + ' mS/cm) مرتفع');
-  if (avgEC < 1.5)  autoRecs.push('⚙️ ضخّ سماد إضافي — EC (' + avgEC.toFixed(2) + ' mS/cm) منخفض');
+  if (avgEC > 3.5)  autoRecs.push('⚙️ تخفيف المحلول — EC (' + avgEC.toFixed(2) + ' mS/cm) تجاوز الحد العام (3.5)');
+  if (avgEC < 0.8)  autoRecs.push('⚙️ ضخّ سماد إضافي — EC (' + avgEC.toFixed(2) + ' mS/cm) أقل من الحد الأدنى التشغيلي');
   if (avgTemp > 28) autoRecs.push('⚙️ تشغيل التبريد — حرارة المحيط (' + avgTemp.toFixed(1) + '°C) مرتفعة');
   if (autoRecs.length === 0) autoRecs.push('✅ جميع المؤشرات ضمن النطاقات المثلى خلال آخر 30 يوم');
 
@@ -2247,7 +2486,7 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
                 {[
                   { label: 'متوسط pH',      value: avgPH.toFixed(2),        ok: avgPH >= 5.5 && avgPH <= 7.5, ref: '5.5 – 7.5' },
-                  { label: 'متوسط EC',      value: avgEC.toFixed(2) + ' mS', ok: avgEC <= 2.5,                ref: '≤ 2.5 mS/cm' },
+                  { label: 'متوسط EC',      value: avgEC.toFixed(2) + ' mS', ok: avgEC <= 3.5,                ref: '≤ 3.5 mS/cm' },
                   { label: 'نسبة الامتثال', value: compliancePct + '%',      ok: compliancePct >= 85,          ref: 'الهدف 85%' },
                   { label: 'انحرافات',       value: String(deviations),       ok: deviations === 0,             ref: 'الهدف صفر' },
                 ].map(kpi => (
@@ -2267,7 +2506,7 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
                   <tbody>
                     {last30.map((row, i) => {
                       const phOk  = row.ph >= 5.5 && row.ph <= 7.5;
-                      const ecOk  = row.ec <= 2.5;
+                      const ecOk  = row.ec <= 3.5;
                       const tmpOk = row.tempIn >= 18 && row.tempIn <= 30;
                       const allOk = phOk && ecOk && tmpOk;
                       return (
@@ -2322,33 +2561,50 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
                   ))}
                 </div>
               </div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 8 }}>قائمة فحص GAP — 8 بنود</div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: C.forest, marginBottom: 8 }}>قائمة فحص GAP — 8 بنود (جاهزية الديمو)</div>
               <div style={{ overflowX: 'auto', marginBottom: 14 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr>{['#', 'بند الفحص', 'المتطلب', 'الحالة', 'الملاحظة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+                    <tr>{['#', 'بند الفحص', 'المتطلب', 'الحالة في النظام', 'الملاحظة'].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {[
-                      ['1', 'جودة مياه الري',        'pH 5.5–7.5 · EC ≤ 2.5',    'ممتثل', `متوسط pH ${avgPH.toFixed(1)}`],
-                      ['2', 'متبقيات المبيدات',       'SFDA.FD 382 — صفر تجاوز',  'ممتثل', 'لا مبيدات — هيدروبونيك'],
-                      ['3', 'تتبع رقمي للدفعات',      'SHA + BATCH-ID موثّق',      'ممتثل', `SHA: ${mockSHA('batch-2026-04-A')}`],
-                      ['4', 'نظافة المنشأة',          'بروتوكول تعقيم أسبوعي',     'ممتثل', 'تعقيم 2026-04-28'],
-                      ['5', 'كفاءة استخدام المياه',   'ترشيد ≥ 50% vs تقليدي',    'ممتثل', `توفير ${savingsPct}%`],
-                      ['6', 'تسجيل العمال',           'هويات موثّقة في النظام',     'ممتثل', '3 مشغّلين مسجّلين'],
-                      ['7', 'تخزين ونقل المنتج',      'سلسلة تبريد < 6°C',         'ممتثل', 'ثلاجة مراقَبة بالنظام'],
-                      ['8', 'التدريب والكفاءة',       'شهادة Saudi GAP للمشغّلين',  'ممتثل', 'دورة 2025-11-14'],
-                    ].map(([num, item, req, status, note], i) => (
-                      <tr key={num} style={rowStyle(i)}>
-                        <td style={{ ...tdS, color: C.muted }}>{num}</td>
-                        <td style={{ ...tdS, fontWeight: 600 }}>{item}</td>
-                        <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{req}</td>
-                        <td style={{ ...tdS, color: C.ok, fontWeight: 700 }}>{status} ✓</td>
-                        <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{note}</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const phPctOk    = last30.length ? Math.round((phPass / last30.length) * 100) : 0;
+                      const ecPctOk    = last30.length ? Math.round((ecPass / last30.length) * 100) : 0;
+                      const items: Array<[string, string, string, 'ok' | 'measured' | 'external', string]> = [
+                        ['1', 'جودة مياه الري',         'pH 5.5–7.5 · EC ≤ 3.5 mS/cm',  phPctOk >= 85 && ecPctOk >= 85 ? 'measured' : 'measured', `pH متوسط ${avgPH.toFixed(2)} (${phPctOk}% داخل النطاق) · EC متوسط ${avgEC.toFixed(2)} (${ecPctOk}% داخل النطاق)`],
+                        ['2', 'متبقيات المبيدات MRL',   'SFDA.FD 382/2018 — مختبر معتمد', 'external', 'النظام لا يقيس MRL — يتطلب تقرير مختبر معتمد من SFDA'],
+                        ['3', 'تتبع رقمي للدفعات',       'BATCH-ID موثّق + Hash chain',   'measured', `SHA: ${mockSHA('batch-2026-04-A')} (mock في الديمو · يصبح SHA-256 حقيقي في الإنتاج)`],
+                        ['4', 'نظافة المنشأة وتعقيمها', 'بروتوكول تعقيم موثّق',          'external', 'يتطلب سجلاً تشغيلياً بشرياً — خارج نطاق الحساسات'],
+                        ['5', 'كفاءة استخدام المياه',    'ترشيد ≥ 50% vs ري تقليدي',     'measured', `توفير ${savingsPct}% (محسوب من قراءات 30 يوم)`],
+                        ['6', 'تسجيل العمال والصلاحيات', 'هويات موثّقة + أدوار',          'measured', '5 أدوار محددة (Owner/Operator/Technician/Auditor/System) — يتطلب ربطاً بسجل HR رسمي'],
+                        ['7', 'تخزين ونقل المنتج',       'سلسلة تبريد < 6°C موثّقة',     'external', 'النظام لا يرصد سلسلة التبريد — يتطلب logger خارجي'],
+                        ['8', 'التدريب والكفاءة',         'شهادات Saudi GAP للمشغّلين',    'external', 'يتطلب توثيق شهادات تدريب خارج النظام'],
+                      ];
+                      return items.map(([num, item, req, kind, note], i) => {
+                        const cfg = kind === 'measured'
+                          ? { color: C.ok,      bg: '#ECFDF5', border: '#A7F3D0', label: '✓ مُقاس بالنظام' }
+                          : kind === 'external'
+                          ? { color: C.warn,    bg: '#FFF7ED', border: '#FDBA74', label: '⊘ خارج النطاق — توثيق خارجي' }
+                          : { color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', label: '◔ جزئي' };
+                        return (
+                          <tr key={num} style={rowStyle(i)}>
+                            <td style={{ ...tdS, color: C.muted }}>{num}</td>
+                            <td style={{ ...tdS, fontWeight: 600 }}>{item}</td>
+                            <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{req}</td>
+                            <td style={tdS}>
+                              <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, whiteSpace: 'nowrap' as const }}>{cfg.label}</span>
+                            </td>
+                            <td style={{ ...tdS, fontSize: 11, color: C.inkSoft }}>{note}</td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
+              </div>
+              <div style={{ background: '#FFF7ED', border: '1px solid #FDBA74', borderRadius: 8, padding: 10, marginBottom: 14, fontSize: 11, color: '#7C2D12', lineHeight: 1.7 }}>
+                <strong>ملاحظة الجاهزية:</strong> "مُقاس بالنظام" يعني توفّر بيانات تشغيلية تدعم البند. "خارج النطاق" يعني أن البند يتطلب توثيقاً بشرياً أو مختبراً خارجياً وليس إثباتاً ينتجه النظام تلقائياً. هذا الملف يعرض جاهزية الديمو وليس شهادة معتمدة.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
                 {[
@@ -2363,13 +2619,16 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
                 ))}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, borderTop: `1px dashed ${C.border}`, paddingTop: 14 }}>
-                {['أُعدّ بواسطة النظام', 'مراجع ومعتمد — م. علي الحربي', 'ختم المنشأة'].map(role => (
+                {['أُعدّ بواسطة النظام (آلي)', '<مكان توقيع المراجع المعتمد>', '<مكان ختم المنشأة>'].map(role => (
                   <div key={role} style={{ textAlign: 'center', fontSize: 12 }}>
                     <div style={{ color: C.muted, marginBottom: 28 }}>{role}</div>
                     <div style={{ borderBottom: `1px solid ${C.ink}`, marginBottom: 4 }} />
                     <div style={{ color: C.muted, fontSize: 10 }}>التاريخ: {today}</div>
                   </div>
                 ))}
+              </div>
+              <div style={{ marginTop: 10, fontSize: 11, color: C.muted, textAlign: 'center', fontStyle: 'italic' }}>
+                ⚠️ التواقيع والأختام أعلاه هي أماكن مخصصة (placeholders) — تُستكمل من جهة الإصدار المعتمدة وليست توقيعات حقيقية.
               </div>
             </div>
           )}
@@ -2444,16 +2703,25 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
             </div>
           )}
 
-          {/* ══ ZATCA Fatoora ══ */}
+          {/* ══ ZATCA Fatoora — Conceptual Linkage ══ */}
           {reportId === 'zatca-fatoora' && (
             <div>
+              <div style={{ background: '#FEF2F2', border: '2px solid #FCA5A5', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: '#991B1B', lineHeight: 1.7 }}>
+                <strong>⚠️ تصوّر معماري فقط — ليست فاتورة ZATCA Phase 2 صالحة:</strong>
+                <ul style={{ margin: '6px 0 0 16px', padding: 0, fontSize: 11 }}>
+                  <li>لا يحوي توقيع رقمي XAdES-B-LTV ولا Cryptographic Stamp Identifier (CSID)</li>
+                  <li>QR المعروض ليس بصيغة TLV Base64 المطلوبة (يحتاج: اسم البائع + الرقم الضريبي + الطابع الزمني + الإجمالي + قيمة الضريبة)</li>
+                  <li>لا يحوي UUID للفاتورة، نوع الفاتورة (Standard/Simplified)، أو نسبة الضريبة لكل بند</li>
+                  <li>الأرقام الضريبية في النموذج وهمية لأغراض العرض</li>
+                </ul>
+              </div>
               <div style={{ fontWeight: 800, fontSize: 15, color: report.accentColor, marginBottom: 14, paddingBottom: 8, borderBottom: `2px solid ${report.accentColor}30` }}>
-                فاتورة ضريبية إلكترونية — Fatoora Phase 2
+                نموذج توضيحي للربط بين دفعة الحصاد ومرجع الفاتورة
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                 {[
-                  { title: 'البائع (المورد)', fields: [['الاسم', 'شركة انتيليجنت غاردن'], ['الرقم الضريبي', '310012345600003'], ['CR', ESTABLISHMENT_INFO.cr], ['العنوان', 'جدة، حي الأمانة']] },
-                  { title: 'المشتري',         fields: [['الاسم', 'مجمع الرياض الغذائي'], ['الرقم الضريبي', '310087654300001'], ['رقم الدفعة', 'BATCH-2026-04-A'], ['العنوان', 'الرياض، حي الروابي']] },
+                  { title: 'البائع (المورد) — توضيحي', fields: [['الاسم', 'شركة انتيليجنت غاردن (ديمو)'], ['الرقم الضريبي', '<DEMO-VAT-15-DIGITS>'], ['CR', ESTABLISHMENT_INFO.cr], ['العنوان', '<مكان عنوان البائع>']] },
+                  { title: 'المشتري — توضيحي',        fields: [['الاسم', '<اسم المشتري>'], ['الرقم الضريبي', '<DEMO-VAT-15-DIGITS>'], ['رقم الدفعة', 'BATCH-2026-04-A'], ['العنوان', '<مكان عنوان المشتري>']] },
                 ].map(({ title, fields }) => (
                   <div key={title} style={{ background: C.creamDark, borderRadius: 8, padding: 14 }}>
                     <div style={{ fontWeight: 700, fontSize: 12, color: report.accentColor, marginBottom: 8 }}>{title}</div>
@@ -2497,22 +2765,19 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
                 </table>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
-                <div style={{ width: 80, height: 80, background: '#000', borderRadius: 6, padding: 6, display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1, flexShrink: 0 }}>
-                  {Array.from({ length: 36 }).map((_, i) => (
-                    <div key={i} style={{ background: [0,1,2,5,6,12,13,14,17,18,24,25,26,29,30,7,11,23,31,35,8,9,10,32,33,34].includes(i) ? '#fff' : '#000', borderRadius: 1 }} />
-                  ))}
-                </div>
+                <QRCode value={`DEMO|invoice=DEMO-INV-2026-04-A-001|batch=BATCH-2026-04-A|date=${today}|note=NOT-A-VALID-ZATCA-TLV`} size={88} label="QR توضيحي للفاتورة (ليس TLV)" />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: report.accentColor, marginBottom: 4 }}>QR Code — ZATCA Fatoora Phase 2</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: report.accentColor, marginBottom: 4 }}>QR توضيحي — يحتوي بيانات نصية فقط (ليس TLV Base64 صالحاً)</div>
                   <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.7 }}>
-                    رقم الفاتورة: <span style={{ fontFamily: 'monospace' }}>INV-2026-04-A-001</span><br />
+                    رقم الفاتورة (تجريبي): <span style={{ fontFamily: 'monospace' }}>DEMO-INV-2026-04-A-001</span><br />
                     رقم الدفعة: <span style={{ fontFamily: 'monospace' }}>BATCH-2026-04-A</span><br />
-                    تاريخ التوريد: {today}
+                    تاريخ التوريد: {today}<br />
+                    <span style={{ color: C.warn }}>UUID الفاتورة:</span> <span style={{ fontFamily: 'monospace' }}>&lt;ينتجه نظام الإنتاج&gt;</span>
                   </div>
                 </div>
               </div>
               <div style={{ background: `${report.accentColor}08`, border: `1px solid ${report.accentColor}25`, borderRadius: 8, padding: 12, fontSize: 12, color: C.inkSoft, lineHeight: 1.7 }}>
-                💡 يُربط BATCH-ID تلقائياً بفاتورة Fatoora عند الحصاد من خلال iGarden Smart OS. يقتصر دور ZATCA على الفوترة الإلكترونية — ليس منصة تتبع غذائي.
+                💡 الهدف الوحيد من هذا النموذج: توضيح كيفية ربط BATCH-ID بمرجع الفاتورة الإلكترونية في معمارية النظام. التكامل الفعلي مع ZATCA يتطلب SDK معتمد، CSID، توقيع رقمي، وQR TLV — كلها خارج نطاق هذا الديمو.
               </div>
             </div>
           )}
@@ -2521,10 +2786,13 @@ function ReportModal({ reportId, onClose, historicalData, zones }) {
           <div style={{ marginTop: 18, borderTop: `1px dashed ${C.border}`, paddingTop: 14 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, fontSize: 11, color: C.muted, marginBottom: 12, background: C.creamDark, padding: '8px 12px', borderRadius: 6 }}>
               <span><strong>SHA-256 (mock):</strong> <span style={{ fontFamily: 'monospace' }}>{sha}</span></span>
-              <span><strong>رابط التحقق:</strong> <span style={{ fontFamily: 'monospace', color: report.accentColor }}>verify.igarden.sa/{reportId}</span></span>
+              <span><strong>رابط التحقق (نمطي — غير مفعَّل):</strong> <span style={{ fontFamily: 'monospace', color: report.accentColor, opacity: 0.65, textDecoration: 'line-through' }}>verify.igarden.sa/{reportId}</span></span>
+            </div>
+            <div style={{ marginBottom: 12, fontSize: 10, color: C.muted, fontStyle: 'italic' }}>
+              ⓘ نظام التحقق (verify.igarden.sa) لم يُنشر بعد — الرابط أعلاه يظهر كقالب لتوضيح المعمارية المستقبلية.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              {['أُعدّ بواسطة النظام', 'مراجع من المشغّل', 'ختم المنشأة'].map(role => (
+              {['أُعدّ بواسطة النظام (آلي)', '<مكان توقيع المشغّل>', '<مكان ختم المنشأة>'].map(role => (
                 <div key={role} style={{ textAlign: 'center', fontSize: 11 }}>
                   <div style={{ color: C.muted, marginBottom: 24 }}>{role}</div>
                   <div style={{ borderBottom: `1px solid ${C.ink}`, marginBottom: 4 }} />
@@ -2672,7 +2940,7 @@ function ApiMappingSection({ isMobile }) {
             ['Farm Code',    'DEMO-001'],
             ['Data Mode',    'Simulated'],
             ['Environment',  'Demo'],
-            ['Version',      'Compliance Demo v0.4'],
+            ['Version',      'Compliance Demo RC-2 (Bilingual)'],
             ['Report Format', 'PDF / CSV / Print'],
             ['Metadata Scope', 'Header of every export'],
           ].map(([k, v]) => (
@@ -2992,6 +3260,32 @@ function SystemLimitsSection({ isMobile }) {
         </div>
         <div style={{ marginTop: 12, padding: '10px 14px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 12, color: '#1E40AF', lineHeight: 1.7 }}>
           <strong>ملاحظة: </strong>لا يوجد حالياً ربط مباشر مع أي منصة حكومية. يستخدم النظام حقولاً متوافقة مع متطلبات NAAMA وZATCA جاهزة للتكامل الرسمي عند توفّر API معتمد.
+        </div>
+      </div>
+
+      {/* GLOBAL Standards Gap Analysis Card */}
+      <div style={{ ...cardS, borderTop: `4px solid #7C3AED` }}>
+        <div style={{ ...labelS, color: '#7C3AED' }}>🌍 تحليل الفجوة مقابل المعايير العالمية</div>
+        <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.7, marginBottom: 10 }}>
+          وثيقة منفصلة تستعرض جاهزية النظام مقابل ستة معايير: <strong>GLOBALG.A.P. IFA v6 · ISO 22005:2007 · Codex HACCP · EU MRL Reg 396/2005 · ISO 22000:2018 · ISO 27001</strong>. تتضمّن خارطة طريق من 3 سبرنتات لإغلاق الفجوات.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, fontSize: 11 }}>
+          {[
+            { name: 'Saudi GAP', pct: 60, color: C.warn },
+            { name: 'GLOBALG.A.P.', pct: 45, color: C.warn },
+            { name: 'ISO 22005', pct: 70, color: C.ok },
+            { name: 'Codex HACCP', pct: 55, color: C.warn },
+            { name: 'EU MRL', pct: 25, color: C.danger },
+            { name: 'ISO 27001', pct: 65, color: C.ok },
+          ].map(s => (
+            <div key={s.name} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{s.name}</div>
+              <div style={{ fontWeight: 800, color: s.color, fontSize: 16 }}>{s.pct}%</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 10, fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
+          📄 الوثيقة الكاملة في المستودع: <span style={{ fontFamily: 'monospace', color: '#7C3AED' }}>docs/global-standards-gap-analysis.md</span>
         </div>
       </div>
 
@@ -3428,18 +3722,16 @@ function BatchTraceabilitySection({ isMobile, batchData = BATCH_DATA, dataSource
             </div>
           </div>
           <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
-            <div style={{ fontWeight: 700, color: C.forest, fontSize: 14, marginBottom: 12 }}>QR تتبع الدفعة</div>
+            <div style={{ fontWeight: 700, color: C.forest, fontSize: 14, marginBottom: 12 }}>QR تتبع الدفعة (تصوّري)</div>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ width: 88, height: 88, background: '#000', borderRadius: 8, padding: 7, display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1.5, flexShrink: 0 }}>
-                {Array.from({ length: 36 }).map((_, i) => (
-                  <div key={i} style={{ background: [0,1,2,3,4,5,7,11,12,13,14,17,19,20,22,23,24,25,26,27,28,29,31,35].includes(i) ? '#fff' : '#000', borderRadius: 1 }} />
-                ))}
-              </div>
+              <QRCode value="https://trace.igarden.sa/BATCH-TOM-2026-001?demo=1" size={96} label="QR صفحة تتبع الدفعة (نمطي)" />
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, color: C.forest, marginBottom: 6, fontSize: 13 }}>trace.igarden.sa/BATCH-TOM-2026-001</div>
-                <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.7, marginBottom: 8 }}>سجل الدفعة الكامل: تاريخ الزراعة · قراءات الحساسات · شهادة GAP · فاتورة ZATCA</div>
+                <div style={{ fontWeight: 700, color: C.forest, marginBottom: 6, fontSize: 13, opacity: 0.7 }}>
+                  trace.igarden.sa/BATCH-TOM-2026-001 <span style={{ fontSize: 10, color: C.warn, fontWeight: 600 }}>(نمطي — غير مفعَّل)</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.7, marginBottom: 8 }}>تصوّر معماري لسجل الدفعة الكامل (تاريخ الزراعة · قراءات الحساسات · ملف الجاهزية · مرجع الفاتورة). صفحة التتبع لم تُنشر بعد.</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <Badge color={C.ok}    text="✅ Saudi GAP Tracked" />
+                  <Badge color={C.ok}    text="✅ Saudi GAP Tracked (Demo)" />
                   <Badge color="#0EA5E9" text="📋 SFDA.FD 382/2018"  />
                 </div>
               </div>
@@ -3530,21 +3822,19 @@ function GAPTraceability({ isMobile }) {
 
       {/* QR + Trace Link */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 14px', color: C.forest, fontSize: 14, fontWeight: 700 }}>QR تتبع الدفعة</h3>
+        <h3 style={{ margin: '0 0 14px', color: C.forest, fontSize: 14, fontWeight: 700 }}>QR تتبع الدفعة (تصوّري)</h3>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ width: 96, height: 96, background: '#000', borderRadius: 8, padding: 8, display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1.5, flexShrink: 0 }}>
-            {Array.from({ length: 36 }).map((_, i) => (
-              <div key={i} style={{ background: [0,1,2,3,4,5,7,11,12,13,14,17,19,20,22,23,24,25,26,27,28,29,31,35].includes(i) ? '#fff' : '#000', borderRadius: 1 }} />
-            ))}
-          </div>
+          <QRCode value="https://trace.igarden.sa/BATCH-2026-04-A?demo=1" size={104} label="QR صفحة تتبع الدفعة (نمطي)" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, color: C.forest, marginBottom: 6, fontSize: 14 }}>trace.igarden.sa/BATCH-2026-04-A</div>
+            <div style={{ fontWeight: 700, color: C.forest, marginBottom: 6, fontSize: 14, opacity: 0.7 }}>
+              trace.igarden.sa/BATCH-2026-04-A <span style={{ fontSize: 10, color: C.warn, fontWeight: 600 }}>(نمطي — غير مفعَّل)</span>
+            </div>
             <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.7 }}>
-              امسح الرمز للوصول لسجل الدفعة الكامل:<br />
-              تاريخ الزراعة · قراءات الحساسات · شهادة GAP · فاتورة ZATCA
+              تصوّر معماري لصفحة تتبع الدفعة الكاملة:<br />
+              تاريخ الزراعة · قراءات الحساسات · ملف جاهزية GAP · مرجع الفاتورة
             </div>
             <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <Badge color={C.ok}    text="✅ متحقق — Saudi GAP" />
+              <Badge color={C.ok}    text="✅ Saudi GAP Tracked (Demo)" />
               <Badge color="#0EA5E9" text="📋 SFDA.FD 382/2018"  />
             </div>
           </div>
@@ -3553,7 +3843,7 @@ function GAPTraceability({ isMobile }) {
 
       {/* Regulatory References Footer */}
       <div style={{ padding: 14, background: C.creamDark, borderRadius: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 12, color: C.forest, marginBottom: 10 }}>المراجع التنظيمية المعتمدة</div>
+        <div style={{ fontWeight: 700, fontSize: 12, color: C.forest, marginBottom: 10 }}>المراجع التنظيمية الرسمية</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
           {REGULATORY_REFS.map(ref => (
             <div key={ref.code} style={{ background: '#fff', padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}` }}>
