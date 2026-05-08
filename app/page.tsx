@@ -1455,11 +1455,17 @@ const getReportMetadata = () => ({
 });
 
 // ─── Auth Status Panel — Sprint 9D ───────────────────────────────────
-function AuthStatusPanel({ auth }: { auth: ReturnType<typeof useSupabaseAuth> }) {
-  const [email, setEmail]       = useState('');
-  const [sending, setSending]   = useState(false);
-  const [sent, setSent]         = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+function AuthStatusPanel({
+  auth, dataSource, dataLoading,
+}: {
+  auth: ReturnType<typeof useSupabaseAuth>;
+  dataSource: string;
+  dataLoading: boolean;
+}) {
+  const [email, setEmail]     = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   async function handleSignIn() {
     if (!email.trim()) return;
@@ -1477,16 +1483,25 @@ function AuthStatusPanel({ auth }: { auth: ReturnType<typeof useSupabaseAuth> })
   if (auth.loading) return null;
 
   if (auth.signedIn) {
+    // Logged in but RLS is blocking data (no farm membership yet)
+    const noMembership = !dataLoading && dataSource === 'mock';
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12 }}>
-        <span style={{ color: '#166534', fontWeight: 700 }}>🔑 مسجّل الدخول:</span>
-        <span style={{ color: '#15803D', flexGrow: 1 }}>{auth.userEmail}</span>
-        <button
-          onClick={() => void auth.signOut()}
-          style={{ padding: '4px 12px', background: '#fff', border: '1px solid #BBF7D0', borderRadius: 6, cursor: 'pointer', color: '#166534', fontFamily: 'inherit', fontSize: 11, fontWeight: 700 }}
-        >
-          تسجيل خروج
-        </button>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: noMembership ? '10px 10px 0 0' : 10, padding: '10px 14px', fontSize: 12 }}>
+          <span style={{ color: '#166534', fontWeight: 700 }}>🔑 مسجّل الدخول:</span>
+          <span style={{ color: '#15803D', flexGrow: 1 }}>{auth.userEmail}</span>
+          <button
+            onClick={() => void auth.signOut()}
+            style={{ padding: '4px 12px', background: '#fff', border: '1px solid #BBF7D0', borderRadius: 6, cursor: 'pointer', color: '#166534', fontFamily: 'inherit', fontSize: 11, fontWeight: 700 }}
+          >
+            تسجيل خروج
+          </button>
+        </div>
+        {noMembership && (
+          <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '8px 14px', fontSize: 11, color: '#92400E' }}>
+            ⚠️ مسجّل الدخول، لكن لا توجد عضوية مزرعة نشطة — البيانات الحية غير متاحة. أضف صفاً في <strong>farm_memberships</strong> لـ DEMO-001.
+          </div>
+        )}
       </div>
     );
   }
@@ -1518,6 +1533,72 @@ function AuthStatusPanel({ auth }: { auth: ReturnType<typeof useSupabaseAuth> })
         {sending ? '⏳ جاري…' : 'إرسال رابط الدخول'}
       </button>
       {error && <span style={{ fontSize: 11, color: '#DC2626', width: '100%' }}>{error}</span>}
+    </div>
+  );
+}
+
+// ─── System Health Card — Sprint 10C ─────────────────────────────────
+function SystemHealthCard({
+  auth, dataSource, dataLoading, activeFarmId, activeFarmCode,
+}: {
+  auth: ReturnType<typeof useSupabaseAuth>;
+  dataSource: string;
+  dataLoading: boolean;
+  activeFarmId: string | null;
+  activeFarmCode: string;
+}) {
+  const rows: { label: string; value: string; ok: boolean }[] = [
+    {
+      label: 'Auth',
+      value: auth.loading  ? 'جاري التحقق…'
+           : auth.signedIn ? `مسجّل الدخول — ${auth.userEmail}`
+           : auth.configured ? 'مجهول (غير مسجّل)'
+           : 'غير مهيّأ (بدون env vars)',
+      ok: auth.signedIn,
+    },
+    {
+      label: 'مصدر البيانات',
+      value: dataLoading ? 'جاري التحميل…'
+           : dataSource === 'supabase' ? 'Supabase — بيانات حية'
+           : 'Mock — بيانات محاكاة محلية',
+      ok: !dataLoading && dataSource === 'supabase',
+    },
+    {
+      label: 'سياق المزرعة',
+      value: activeFarmId ? `${activeFarmCode} · ${activeFarmId.slice(0, 8)}…` : `${activeFarmCode} — لا يوجد farm_id حي`,
+      ok: Boolean(activeFarmId),
+    },
+    {
+      label: 'تسجيل التقارير',
+      value: auth.signedIn && activeFarmId ? 'مفعّل — سيتم تسجيل كل تصدير' : 'معطّل — يتطلب تسجيل دخول + عضوية',
+      ok: auth.signedIn && Boolean(activeFarmId),
+    },
+    {
+      label: 'التخزين',
+      value: auth.configured ? 'مهيّأ — رفع إلى compliance-reports' : 'غير مهيّأ',
+      ok: auth.configured,
+    },
+    {
+      label: 'سياسات RLS',
+      value: 'membership-based — is_farm_member()',
+      ok: true,
+    },
+  ];
+
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+      <div style={{ fontWeight: 800, fontSize: 13, color: C.forest, marginBottom: 12 }}>⚙️ System Health</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+        {rows.map(r => (
+          <div key={r.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 10px', background: r.ok ? '#F0FDF4' : '#F9FAFB', borderRadius: 8, border: `1px solid ${r.ok ? '#BBF7D0' : '#E5E7EB'}` }}>
+            <span style={{ fontSize: 14, marginTop: 1, flexShrink: 0 }}>{r.ok ? '🟢' : '🔵'}</span>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{r.label}</div>
+              <div style={{ fontSize: 11, color: '#374151', marginTop: 2 }}>{r.value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1600,8 +1681,11 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
         </p>
       </div>
 
-      {/* Auth Status — Sprint 9D */}
-      {auth.configured && <AuthStatusPanel auth={auth} />}
+      {/* Auth Status — Sprint 9D/10B */}
+      {auth.configured && <AuthStatusPanel auth={auth} dataSource={dataSource} dataLoading={dataLoading} />}
+
+      {/* System Health — Sprint 10C */}
+      <SystemHealthCard auth={auth} dataSource={dataSource} dataLoading={dataLoading} activeFarmId={activeFarmId} activeFarmCode={activeFarmCode} />
 
       {/* Section Navigation */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: '4px 6px', marginBottom: 20, display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none' }}>
