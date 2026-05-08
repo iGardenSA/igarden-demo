@@ -2,7 +2,34 @@
 
 > **Environment:** demo.igarden.sa  
 > **Branch:** claude/add-compliance-tab-EyHaB  
-> **Last updated:** 2026-05-08
+> **Last updated:** 2026-05-08  
+> **Status:** 🚀 Release Candidate
+
+---
+
+## RC-1 Manual Acceptance Test
+
+Run these steps in order before any external demo share. Record pass/fail below.
+
+| Step | Action | Expected | Result |
+|------|--------|----------|--------|
+| 1 | Open compliance tab, confirm RC badge visible | "Release Candidate · Compliance Readiness Demo · Not a Certification Product" in banner | ☐ |
+| 2 | Confirm you are logged out | Data Source badge = `🔵 بيانات محلية محاكاة`; Auth panel shows sign-in form | ☐ |
+| 3 | Sign in via Magic Link | Link sent confirmation shown; click link in email → signed-in state | ☐ |
+| 4 | Add owner membership in Supabase SQL Editor | `insert into farm_memberships (farm_id, user_id, role, status) select id, '<YOUR_UUID>', 'owner', 'active' from farms where farm_code = 'DEMO-001' on conflict (farm_id, user_id) do update set role = 'owner', status = 'active';` | ☐ |
+| 5 | Refresh / wait for data | Data Source badge = `🟢 مصدر البيانات: قاعدة ديمو Supabase`; System Health all 🟢 | ☐ |
+| 6 | Click "تقرير الامتثال PDF" | PDF downloads immediately to device | ☐ |
+| 7 | Check Supabase Storage → compliance-reports | `demo/RPT-DEMO-*.pdf` file appears | ☐ |
+| 8 | Check Supabase Table → report_exports | Row with `farm_id` + `file_url` + `report_type` visible | ☐ |
+| 9 | Open downloaded PDF | Header shows correct `activeFarmCode`; disclaimer present on page 1; all sections populated | ☐ |
+| 10 | Click "تسجيل خروج" | Auth panel resets to sign-in form; Data Source reverts to `🔵 Mock`; no page errors | ☐ |
+| 11 | While logged out, click "تقرير الامتثال PDF" | PDF downloads; no insert error; console shows "no activeFarmId" info only | ☐ |
+
+**RC-1 Outcome:** ☐ Pass &nbsp;&nbsp; ☐ Fail (document issues below)
+
+**Tester:** _______________  **Date:** _______________  **Notes:** _______________
+
+---
 
 ---
 

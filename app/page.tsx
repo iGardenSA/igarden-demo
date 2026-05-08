@@ -1674,6 +1674,9 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
               : dataSource === 'supabase' ? '🟢 مصدر البيانات: قاعدة ديمو Supabase'
               : '🔵 مصدر البيانات: بيانات محلية محاكاة'}
           </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 14, fontSize: 10, fontWeight: 700, background: 'rgba(253,186,116,0.15)', border: '1px solid rgba(253,186,116,0.5)', color: '#FDE68A' }}>
+            🚀 Release Candidate · Compliance Readiness Demo · Not a Certification Product
+          </div>
         </div>
         <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900 }}>طبقة الامتثال السعودي</h2>
         <p style={{ margin: '6px 0 0', color: C.limeLight, fontSize: isMobile ? 12 : 14 }}>
