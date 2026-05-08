@@ -7,6 +7,7 @@ import { REGULATORY_REFS, DISCLAIMER_TEXT, ESTABLISHMENT_INFO } from './complian
 import { calcComplianceScore, mockSHA, generateAuditEntries } from './compliance/compliance-engine';
 import type { AuditEntry } from './compliance/compliance-engine';
 import { useComplianceData } from './hooks/useComplianceData';
+import { useSupabaseAuth }   from './hooks/useSupabaseAuth';
 import type { AuditEventDisplay, BatchDisplay, WaterSourceDisplay } from './lib/compliance-data';
 import { logReportExport } from './lib/report-exports';
 import { uploadComplianceReportPdf } from './lib/report-storage';
@@ -1453,6 +1454,75 @@ const getReportMetadata = () => ({
   disclaimer:  'Generated from a demo environment using simulated readings. Not a certification document.',
 });
 
+// ─── Auth Status Panel — Sprint 9D ───────────────────────────────────
+function AuthStatusPanel({ auth }: { auth: ReturnType<typeof useSupabaseAuth> }) {
+  const [email, setEmail]       = useState('');
+  const [sending, setSending]   = useState(false);
+  const [sent, setSent]         = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+
+  async function handleSignIn() {
+    if (!email.trim()) return;
+    setSending(true); setError(null);
+    try {
+      await auth.signInWithEmail(email.trim());
+      setSent(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (auth.loading) return null;
+
+  if (auth.signedIn) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12 }}>
+        <span style={{ color: '#166534', fontWeight: 700 }}>🔑 مسجّل الدخول:</span>
+        <span style={{ color: '#15803D', flexGrow: 1 }}>{auth.userEmail}</span>
+        <button
+          onClick={() => void auth.signOut()}
+          style={{ padding: '4px 12px', background: '#fff', border: '1px solid #BBF7D0', borderRadius: 6, cursor: 'pointer', color: '#166534', fontFamily: 'inherit', fontSize: 11, fontWeight: 700 }}
+        >
+          تسجيل خروج
+        </button>
+      </div>
+    );
+  }
+
+  if (sent) {
+    return (
+      <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#1D4ED8', fontWeight: 600 }}>
+        📧 تم إرسال رابط الدخول إلى <strong>{email}</strong> — تحقق من بريدك الإلكتروني.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: '#FAFAFA', border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', marginBottom: 16, display: 'flex', flexWrap: 'wrap' as const, gap: 8, alignItems: 'center' }}>
+      <span style={{ fontSize: 12, color: '#374151', fontWeight: 600, flexShrink: 0 }}>🔒 تسجيل الدخول للوصول الكامل:</span>
+      <input
+        type="email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && void handleSignIn()}
+        placeholder="البريد الإلكتروني"
+        style={{ flex: 1, minWidth: 180, padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+      />
+      <button
+        onClick={() => void handleSignIn()}
+        disabled={sending || !email.trim()}
+        style={{ padding: '6px 14px', background: C.forest, color: '#fff', border: 'none', borderRadius: 6, cursor: sending ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, opacity: sending ? 0.7 : 1 }}
+      >
+        {sending ? '⏳ جاري…' : 'إرسال رابط الدخول'}
+      </button>
+      {error && <span style={{ fontSize: 11, color: '#DC2626', width: '100%' }}>{error}</span>}
+    </div>
+  );
+}
+
+// ─── Compliance Tab ───────────────────────────────────────────────────
 function ComplianceTab({ isMobile, historicalData, zones }) {
   const [section, setSection] = useState<'scores' | 'reports' | 'audit' | 'traceability' | 'limits' | 'operational' | 'roles' | 'api'>('scores');
   const [reportModal, setReportModal] = useState<string | null>(null);
@@ -1462,6 +1532,8 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
 
   // Sprint 6: live data from Supabase, falls back to mock constants when env vars absent
   const { data: liveData, source: dataSource, loading: dataLoading } = useComplianceData();
+  // Sprint 9D: magic link auth — no-op when Supabase env vars absent
+  const auth = useSupabaseAuth();
   const currentAuditEvents:  AuditEventDisplay[]  = liveData?.auditEvents  ?? ENHANCED_AUDIT_EVENTS;
   const currentBatches:      BatchDisplay[]        = liveData?.batches      ?? BATCH_DATA;
   const currentWaterSources: WaterSourceDisplay[]  = liveData?.waterSources ?? WATER_SOURCE_LOG;
@@ -1527,6 +1599,9 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
           مراقبة الامتثال لمعايير MEWA وSFDA.FD 382/2018 وSaudi GAP وZATCA Fatoora
         </p>
       </div>
+
+      {/* Auth Status — Sprint 9D */}
+      {auth.configured && <AuthStatusPanel auth={auth} />}
 
       {/* Section Navigation */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: '4px 6px', marginBottom: 20, display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none' }}>
