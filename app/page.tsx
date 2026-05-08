@@ -9,6 +9,7 @@ import type { AuditEntry } from './compliance/compliance-engine';
 import { useComplianceData } from './hooks/useComplianceData';
 import type { AuditEventDisplay, BatchDisplay, WaterSourceDisplay } from './lib/compliance-data';
 import { logReportExport } from './lib/report-exports';
+import { uploadComplianceReportPdf } from './lib/report-storage';
 
 // ═══════════════════════════════════════════════════════════════════
 // 🌱 iGarden Smart OS — Demo Seed v1.0
@@ -1875,17 +1876,22 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
       doc.text('DEMO DATA ONLY — Not for official submission', pageW - mg, 289, { align: 'right' });
     }
 
+    const pdfBlob = doc.output('blob') as Blob;
     doc.save(`igarden-compliance-report-${new Date().toISOString().slice(0,10)}.pdf`);
 
-    void logReportExport({
-      reportId,
-      farmId:      null,
-      reportType:  'Compliance Readiness Report',
-      dataMode:    'demo',
-      generatedBy: 'Demo System',
-      fileUrl:     null,
-      disclaimer:  meta.disclaimer,
-    });
+    void (async () => {
+      const uploadResult = await uploadComplianceReportPdf({ reportId, pdfBlob });
+      await logReportExport({
+        reportId,
+        farmId:      null,
+        reportType:  'Compliance Readiness Report',
+        dataMode:    'demo',
+        generatedBy: 'Demo System',
+        fileUrl:     uploadResult.fileUrl,
+        disclaimer:  meta.disclaimer,
+      });
+      console.info('[iGarden] Compliance report export handled:', uploadResult);
+    })();
   };
 
   return (

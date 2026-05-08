@@ -103,6 +103,37 @@ export async function post<T = Record<string, unknown>>(
   return res.json() as Promise<T[]>;
 }
 
+// ─── Storage helpers ─────────────────────────────────────────────────
+
+export async function uploadStorageObject(input: {
+  bucket:      string;
+  path:        string;
+  body:        Blob;
+  contentType?: string;
+}): Promise<{ path: string }> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured');
+  }
+  const response = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/${input.bucket}/${input.path}`,
+    {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type':  input.contentType ?? 'application/octet-stream',
+        'x-upsert':      'true',
+      },
+      body: input.body,
+    }
+  );
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Supabase storage upload failed: ${response.status} ${errorText}`);
+  }
+  return { path: input.path };
+}
+
 export async function insertReportExport(payload: {
   report_id:    string;
   farm_id:      string;
