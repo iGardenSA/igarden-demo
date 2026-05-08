@@ -1603,7 +1603,7 @@ const getReportMetadata = () => ({
   environment: 'Demo',
   generatedAt: new Date().toISOString(),
   generatedBy: 'Demo System',
-  version:     'Compliance Demo v0.4',
+  version:     'Compliance Demo RC-2 (Bilingual)',
   disclaimer:  'Generated from a demo environment using simulated readings. Not a certification document.',
 });
 
@@ -1837,6 +1837,13 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
           {t.compliance.subtitle}
         </p>
       </div>
+
+      {/* Partial-translation notice (EN only) */}
+      {t.compliance.partialTranslationNotice && (
+        <div role="note" style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#92400E', lineHeight: 1.7 }}>
+          {t.compliance.partialTranslationNotice}
+        </div>
+      )}
 
       {/* Auth Status — Sprint 9D/10B */}
       {auth.configured && <AuthStatusPanel auth={auth} dataSource={dataSource} dataLoading={dataLoading} />}
@@ -2933,7 +2940,7 @@ function ApiMappingSection({ isMobile }) {
             ['Farm Code',    'DEMO-001'],
             ['Data Mode',    'Simulated'],
             ['Environment',  'Demo'],
-            ['Version',      'Compliance Demo v0.4'],
+            ['Version',      'Compliance Demo RC-2 (Bilingual)'],
             ['Report Format', 'PDF / CSV / Print'],
             ['Metadata Scope', 'Header of every export'],
           ].map(([k, v]) => (

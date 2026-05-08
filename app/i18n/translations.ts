@@ -249,7 +249,7 @@ export const ar = {
     bannerLoading: '⏳ جاري التحقق من المصدر…',
     bannerSupabase: '🟢 مصدر البيانات: قاعدة ديمو Supabase',
     bannerMock: '🔵 مصدر البيانات: بيانات محلية محاكاة',
-    bannerRC: '🚀 Release Candidate · Compliance Readiness Demo · Not a Certification Product',
+    bannerRC: '🚀 RC-2 · نموذج جاهزية امتثال ثنائي اللغة · ليس منتج اعتماد',
     title: 'طبقة الامتثال السعودي',
     subtitle: 'مراقبة الامتثال لمعايير MEWA وSFDA.FD 382/2018 وSaudi GAP وZATCA Fatoora',
     sec: {
@@ -289,6 +289,7 @@ export const ar = {
     pagesIcon: '📄',
     pagesUnit: 'صفحات',
     dateIcon: '📅',
+    partialTranslationNotice: '',
   },
 
   // ── Auth Status Panel ───────────────────────────────────────────
@@ -567,7 +568,7 @@ export const en: typeof ar = {
     bannerLoading: '⏳ Verifying source…',
     bannerSupabase: '🟢 Source: Supabase Demo DB',
     bannerMock: '🔵 Source: Local simulated data',
-    bannerRC: '🚀 Release Candidate · Compliance Readiness Demo · Not a Certification Product',
+    bannerRC: '🚀 RC-2 · Bilingual Compliance Readiness Demo · Not a Certification Product',
     title: 'Saudi Compliance Layer',
     subtitle: 'Compliance monitoring against MEWA, SFDA.FD 382/2018, Saudi GAP and ZATCA Fatoora',
     sec: {
@@ -607,6 +608,7 @@ export const en: typeof ar = {
     pagesIcon: '📄',
     pagesUnit: 'pages',
     dateIcon: '📅',
+    partialTranslationNotice: 'ⓘ Some compliance sub-sections (audit chain detail, system limits, role permissions, API mapping, operational logs, full report templates) remain in Arabic in this preview. Translation will be completed before any English-only external presentation.',
   },
 
   auth: {
