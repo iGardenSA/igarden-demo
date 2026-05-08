@@ -48,10 +48,13 @@ export type WaterSourceDisplay = {
 };
 
 export type ComplianceLiveData = {
-  auditEvents:  AuditEventDisplay[];
-  batches:      BatchDisplay[];
-  waterSources: WaterSourceDisplay[];
-  source:       'supabase';
+  auditEvents:    AuditEventDisplay[];
+  batches:        BatchDisplay[];
+  waterSources:   WaterSourceDisplay[];
+  activeFarmId:   string | null;
+  activeFarmCode: string;
+  activeFarmName: string;
+  source:         'supabase';
 };
 
 // ── Mappers ──────────────────────────────────────────────────────────
@@ -115,17 +118,24 @@ export async function getComplianceLiveData(): Promise<ComplianceLiveData | null
   if (!isSupabaseConfigured()) return null;
 
   try {
-    const [auditRows, batchRows, waterRows] = await Promise.all([
+    const [farmRows, auditRows, batchRows, waterRows] = await Promise.all([
+      get('farms', 'select=id,farm_code,name&data_mode=eq.demo&limit=1'),
       get('audit_events', 'select=*,zones(zone_code)&order=created_at.desc&limit=50'),
       get('batches',      'select=*,zones(zone_code)&order=created_at.desc'),
       get('water_sources', 'order=created_at.asc'),
     ]);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const activeFarm: any = farmRows[0] ?? null;
+
     return {
-      auditEvents:  mapAuditEvents(auditRows),
-      batches:      mapBatches(batchRows),
-      waterSources: mapWaterSources(waterRows),
-      source:       'supabase',
+      auditEvents:    mapAuditEvents(auditRows),
+      batches:        mapBatches(batchRows),
+      waterSources:   mapWaterSources(waterRows),
+      activeFarmId:   activeFarm?.id   ?? null,
+      activeFarmCode: activeFarm?.farm_code ?? 'DEMO-001',
+      activeFarmName: activeFarm?.name ?? 'Demo Farm',
+      source:         'supabase',
     };
   } catch (err) {
     console.warn('[iGarden] Supabase data unavailable, using mock:', err);

@@ -1462,9 +1462,11 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
 
   // Sprint 6: live data from Supabase, falls back to mock constants when env vars absent
   const { data: liveData, source: dataSource, loading: dataLoading } = useComplianceData();
-  const currentAuditEvents: AuditEventDisplay[] = liveData?.auditEvents ?? ENHANCED_AUDIT_EVENTS;
-  const currentBatches:     BatchDisplay[]       = liveData?.batches     ?? BATCH_DATA;
-  const currentWaterSources: WaterSourceDisplay[] = liveData?.waterSources ?? WATER_SOURCE_LOG;
+  const currentAuditEvents:  AuditEventDisplay[]  = liveData?.auditEvents  ?? ENHANCED_AUDIT_EVENTS;
+  const currentBatches:      BatchDisplay[]        = liveData?.batches      ?? BATCH_DATA;
+  const currentWaterSources: WaterSourceDisplay[]  = liveData?.waterSources ?? WATER_SOURCE_LOG;
+  const activeFarmId   = liveData?.activeFarmId   ?? null;
+  const activeFarmCode = liveData?.activeFarmCode  ?? 'DEMO-001';
 
   const sections = [
     { id: 'scores',       label: '🏆 درجة الامتثال',  icon: ShieldCheck },
@@ -1551,7 +1553,7 @@ function ComplianceTab({ isMobile, historicalData, zones }) {
 
       {/* Sections */}
       {section === 'scores'       && <ComplianceScores   isMobile={isMobile} historicalData={historicalData} />}
-      {section === 'reports'      && <ReportsLibrary     isMobile={isMobile} historicalData={historicalData} zones={zones} setReportModal={setReportModal} />}
+      {section === 'reports'      && <ReportsLibrary     isMobile={isMobile} historicalData={historicalData} zones={zones} setReportModal={setReportModal} activeFarmId={activeFarmId} activeFarmCode={activeFarmCode} />}
       {section === 'audit'        && (
         <AuditTrailSection
           isMobile={isMobile}
@@ -1664,7 +1666,7 @@ function ComplianceScores({ isMobile, historicalData }) {
 }
 
 // ─── Section 2: مكتبة التقارير ───
-function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
+function ReportsLibrary({ isMobile, historicalData, zones, setReportModal, activeFarmId = null, activeFarmCode = 'DEMO-001' }: { isMobile: boolean; historicalData: any; zones: any[]; setReportModal: (v: string) => void; activeFarmId?: string | null; activeFarmCode?: string }) {
 
   const buildCsvWithMeta = (headers: string[], dataRows: string[][]) => {
     const m = getReportMetadata();
@@ -1727,7 +1729,7 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
     doc.text('Compliance Readiness Report', mg, 21);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.text(`${meta.generatedAt.slice(0,10)}  |  Farm: ${meta.farmCode}  |  ${meta.version}`, mg, 29);
+    doc.text(`${meta.generatedAt.slice(0,10)}  |  Farm: ${activeFarmCode}  |  ${meta.version}`, mg, 29);
     doc.setTextColor(124, 179, 66);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
@@ -1756,7 +1758,7 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
       head: [['Field', 'Value']],
       body: [
         ['Report ID',   reportId],
-        ['Farm Code',   meta.farmCode],
+        ['Farm Code',   activeFarmCode],
         ['Data Mode',   meta.dataMode],
         ['Environment', meta.environment],
         ['Generated',   meta.generatedAt],
@@ -1872,7 +1874,7 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
       doc.setFillColor(240, 239, 232);
       doc.rect(0, 282, pageW, 15, 'F');
       doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(107, 114, 128);
-      doc.text(`iGarden Smart OS — Demo Compliance Report  |  Page ${i} of ${total}  |  Farm: ${meta.farmCode}`, mg, 289);
+      doc.text(`iGarden Smart OS — Demo Compliance Report  |  Page ${i} of ${total}  |  Farm: ${activeFarmCode}`, mg, 289);
       doc.text('DEMO DATA ONLY — Not for official submission', pageW - mg, 289, { align: 'right' });
     }
 
@@ -1883,7 +1885,7 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
       const uploadResult = await uploadComplianceReportPdf({ reportId, pdfBlob });
       await logReportExport({
         reportId,
-        farmId:      null,
+        farmId:      activeFarmId ?? null,
         reportType:  'Compliance Readiness Report',
         dataMode:    'demo',
         generatedBy: 'Demo System',
@@ -1896,6 +1898,14 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+      {/* Farm Context Badge */}
+      <div style={{ background: '#F8FAFC', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontWeight: 700, color: C.forest }}>سياق المزرعة:</span>
+        <span style={{ fontWeight: 600 }}>{activeFarmCode}</span>
+        <span style={{ color: '#94A3B8', margin: '0 4px' }}>·</span>
+        <span>{activeFarmId ? `سيتم ربط التقرير بـ farm_id: ${activeFarmId.slice(0, 8)}…` : 'لا يوجد farm_id حي — تصدير ديمو فقط'}</span>
+      </div>
 
       {/* Quick Exports */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
