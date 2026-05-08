@@ -1957,10 +1957,14 @@ function ReportsLibrary({ isMobile, historicalData, zones, setReportModal, activ
     doc.save(`igarden-compliance-report-${new Date().toISOString().slice(0,10)}.pdf`);
 
     void (async () => {
+      if (!activeFarmId) {
+        console.info('[iGarden] Report export not logged: no activeFarmId available.');
+        return;
+      }
       const uploadResult = await uploadComplianceReportPdf({ reportId, pdfBlob });
       await logReportExport({
         reportId,
-        farmId:      activeFarmId ?? null,
+        farmId:      activeFarmId,
         reportType:  'Compliance Readiness Report',
         dataMode:    'demo',
         generatedBy: 'Demo System',
