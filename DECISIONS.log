@@ -1,0 +1,77 @@
+DECISIONS.log — iGarden Smart OS Demo · TAQADAM Hardening Sprint
+Branch: feat/smartos-demo-hardening
+Started: 2026-05-22
+
+Each entry: ISO-date · decision · reason · affects.
+
+──────────────────────────────────────────────────────────────────────
+2026-05-22 · Path B (layered scaffold)
+  Reason: existing repo is static HTML only (no package.json); brief Path A
+          formally excluded (npm run dev impossible). Brief Path B fits:
+          "scaffold جديد على نفس stack الموقع، أعد استخدام أي مكوّن صالح".
+  Affects: entire build approach.
+
+2026-05-22 · Mirror igarden-web stack exactly
+  Reason: brand consistency, identical tooling, zero learning curve for the
+          team that maintains igarden.sa. Versions pinned to match
+          igarden-web/package.json (Next 16.2.4, React 19.2.5, Tailwind v4).
+  Affects: package.json, configs.
+
+2026-05-22 · Local SQLite (better-sqlite3) instead of Supabase cloud
+  Reason: brief explicitly allows "Supabase أو SQLite محلي إن لم يتوفّر".
+          No Supabase CLI installed. Phase 4 requires offline laptop demo —
+          SQLite is the simplest path. Schema mirrors Supabase shape so a
+          migration is trivial (.sql file is reusable).
+  Affects: data layer.
+
+2026-05-22 · Preserve old index.html in _legacy/ (not deleted)
+  Reason: conservative — old demo is design reference + git history.
+  Affects: repo root.
+
+2026-05-22 · Branch feat/smartos-demo-hardening from main
+  Reason: brief §9 explicit.
+  Affects: git.
+
+2026-05-22 · No push, no deploy, no MQTT/GPIO/FastAPI until G2/G3/G4
+  Reason: STOP-GATEs are non-negotiable per §10.
+  Affects: all phases.
+
+──────────────────────────────────────────────────────────────────────
+2026-05-22 · Server Actions inline in server components (not REST API routes)
+  Reason: simpler than route handlers, server-side enforcement is identical
+          (decideAIAction / issueCommandAction wrap CommandSafetyError-throwing
+          query helpers). Less boilerplate, fewer surfaces to lock down.
+  Affects: src/lib/actions.ts; passed as props to client components.
+
+2026-05-22 · No PDF library; use browser print + CSV
+  Reason: works offline (no pdf-lib heavy dep), still produces a sharable
+          IFA-aligned compliance report with the mandatory disclaimer footer.
+  Affects: src/components/ComplianceExport.tsx.
+
+2026-05-22 · AI recommendation evidence pre-baked (no model call)
+  Reason: brief §7 forbids unexplained AI + requires confidence label +
+          human approval. Pre-baked evidence is the most honest implementation
+          for a demo — exact text the engineering team reviewed.
+  Affects: data/seed.ts, src/lib/golden-flow.ts.
+
+2026-05-22 · 4 personas: operator/manager/executive (role cookie)
+  Reason: brief §4 phase 2.4 — same data, different surfaces. Cookie-based
+          so SSR can read it; no client store needed.
+  Affects: src/lib/role.ts, components/RoleSwitcher.tsx, site/[id]/page.tsx.
+
+2026-05-22 · NetworkHealth profile is *static-but-plausible*, never "instant"
+  Reason: brief §4 phase 3.7 — even in simulated mode, avoid implying
+          impossible zero-latency sync. Per-site profile shows realistic
+          MQTT/Modbus latency + jitter.
+  Affects: src/components/NetworkHealth.tsx.
+
+2026-05-22 · Phase 4 fallback: dev requires no internet beyond first install
+  Reason: brief §4 phase 4.3 — laptop demo offline. SQLite is local.
+          Fonts are Tajawal+Poppins via next/font (cached in .next after
+          first build). next.config.ts has no remote image hosts.
+  Affects: data layer + layout.
+
+2026-05-22 · 3 local commits (split logically); NO PUSH per G3
+  Reason: brief §9 + §10 — commits small and local; push requires G3 approval.
+  Affects: git history on feat/smartos-demo-hardening.
+
