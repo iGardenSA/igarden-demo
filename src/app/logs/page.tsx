@@ -1,28 +1,25 @@
 import { AppShell } from "@/components/AppShell";
 import { StatusBar } from "@/components/StatusBar";
 import { AuditLog } from "@/components/AuditLog";
-import { computeSiteHealth, listSites, listCommands, listControlEvents } from "@/lib/queries";
-import { getDb } from "@/lib/db";
+import { computeSiteHealth, listSites, listCommands, listControlEvents, listMaintenance } from "@/lib/queries";
+import { EmptyDb } from "@/components/EmptyDb";
+
+export const dynamic = "force-dynamic";
 
 export default async function LogsPage() {
-  const sites = listSites();
+  const sites = await listSites();
+  if (sites.length === 0) return <AppShell><EmptyDb context="logs" /></AppShell>;
   const primary = sites.find((s) => !s.is_demo_site) ?? sites[0];
-  const health = computeSiteHealth(primary.id)!;
-  const commands = listCommands(undefined, 200);
-  const events = listControlEvents({ limit: 300 });
+  const [health, commands, events, maintenance] = await Promise.all([
+    computeSiteHealth(primary.id),
+    listCommands(undefined, 200),
+    listControlEvents({ limit: 300 }),
+    listMaintenance(30),
+  ]);
+  if (!health) return <AppShell><EmptyDb context="logs" /></AppShell>;
+
   const commandsMap = Object.fromEntries(commands.map((c) => [c.id, c]));
   const siteOptions = sites.map((s) => ({ id: s.id, name: s.name }));
-
-  // Maintenance log (server-side query)
-  const maintenance = getDb().prepare(`
-    SELECT m.*, s.name AS site_name
-    FROM maintenance_logs m
-    JOIN sites s ON s.id = m.site_id
-    ORDER BY m.performed_at DESC LIMIT 30
-  `).all() as Array<{
-    id: number; site_id: string; site_name: string; device_id: string | null;
-    action_type: string; notes: string | null; performed_by: string; performed_at: string;
-  }>;
 
   return (
     <AppShell>
@@ -77,5 +74,5 @@ export default async function LogsPage() {
 }
 
 function actionAr(t: string) {
-  return { inspection: "فحص", calibration: "معايرة", replacement: "استبدال", cleaning: "تنظيف", repair: "إصلاح", firmware_update: "تحديث برمجة" }[t] ?? t;
+  return ({ inspection: "فحص", calibration: "معايرة", replacement: "استبدال", cleaning: "تنظيف", repair: "إصلاح", firmware_update: "تحديث برمجة" } as Record<string, string>)[t] ?? t;
 }

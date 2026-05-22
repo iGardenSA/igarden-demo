@@ -7,22 +7,28 @@ import { AuditLog } from "@/components/AuditLog";
 import { computeSiteHealth, getSite, listDevices, listCommands, listControlEvents, listSites } from "@/lib/queries";
 import { getCurrentRole } from "@/lib/role";
 
+export const dynamic = "force-dynamic";
+
 interface Params { params: Promise<{ id: string }> }
 
 export default async function ControlPage({ params }: Params) {
   const { id } = await params;
-  const site = getSite(id);
+  const site = await getSite(id);
   if (!site) notFound();
-  const health = computeSiteHealth(id)!;
-  const role = await getCurrentRole();
-  const devices = listDevices(id);
-  const commands = listCommands(id, 50);
-  const events = listControlEvents({ siteId: id, limit: 80 });
+  const [health, role, devices, commands, events, allSites] = await Promise.all([
+    computeSiteHealth(id),
+    getCurrentRole(),
+    listDevices(id),
+    listCommands(id, 50),
+    listControlEvents({ siteId: id, limit: 80 }),
+    listSites(),
+  ]);
+  if (!health) notFound();
 
   const recentCommandsByDevice: Record<string, typeof commands[0] | null> = {};
   devices.forEach((d) => { recentCommandsByDevice[d.id] = commands.find((c) => c.device_id === d.id) ?? null; });
   const commandsMap: Record<string, typeof commands[0]> = Object.fromEntries(commands.map((c) => [c.id, c]));
-  const siteOptions = listSites().map((s) => ({ id: s.id, name: s.name }));
+  const siteOptions = allSites.map((s) => ({ id: s.id, name: s.name }));
 
   return (
     <AppShell>

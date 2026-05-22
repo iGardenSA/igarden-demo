@@ -5,18 +5,28 @@ import { listAIRecommendations, listSites, computeSiteHealth, getAlert } from "@
 import { decideAIAction } from "@/lib/actions";
 import { Brain } from "lucide-react";
 import { DISCLAIMERS } from "@/lib/disclaimers";
+import { EmptyDb } from "@/components/EmptyDb";
+
+export const dynamic = "force-dynamic";
 
 export default async function AIPage() {
-  const sites = listSites();
+  const sites = await listSites();
+  if (sites.length === 0) return <AppShell><EmptyDb context="ai" /></AppShell>;
   const primary = sites.find((s) => !s.is_demo_site) ?? sites[0];
-  const health = computeSiteHealth(primary.id)!;
+  const [health, pending, approved, modified, rejected] = await Promise.all([
+    computeSiteHealth(primary.id),
+    listAIRecommendations(undefined, "pending"),
+    listAIRecommendations(undefined, "approved"),
+    listAIRecommendations(undefined, "modified"),
+    listAIRecommendations(undefined, "rejected"),
+  ]);
+  if (!health) return <AppShell><EmptyDb context="ai" /></AppShell>;
+  const decided = [...approved, ...modified, ...rejected].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-  const pending = listAIRecommendations(undefined, "pending");
-  const decided = [
-    ...listAIRecommendations(undefined, "approved"),
-    ...listAIRecommendations(undefined, "modified"),
-    ...listAIRecommendations(undefined, "rejected"),
-  ].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  // Resolve linked alerts for pending recommendations
+  const pendingAlertIds = pending.map((p) => p.related_alert_id).filter((x): x is string => Boolean(x));
+  const pendingAlerts = await Promise.all(pendingAlertIds.map((id) => getAlert(id)));
+  const alertById = Object.fromEntries(pendingAlerts.filter(Boolean).map((a) => [a!.id, a!]));
 
   return (
     <AppShell>
@@ -35,7 +45,7 @@ export default async function AIPage() {
           <h2 className="text-sm font-bold">قيد الاعتماد ({pending.length})</h2>
           {pending.length === 0 && <div className="iso-panel p-3 text-xs text-[color:var(--color-iso-ink-muted)]">لا توصيات بانتظار اعتماد.</div>}
           {pending.map((r) => {
-            const alert = r.related_alert_id ? getAlert(r.related_alert_id) : null;
+            const alert = r.related_alert_id ? alertById[r.related_alert_id] : null;
             return (
               <div key={r.id} className="space-y-1">
                 {alert && (

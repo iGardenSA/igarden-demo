@@ -7,14 +7,21 @@ import { CoolingWaterPanel } from "@/components/CoolingWaterPanel";
 import { WaterEfficiency } from "@/components/WaterEfficiency";
 import { computeSiteHealth, listSensors, latestReadingsForSite, latestCooling, listAlerts, getSite } from "@/lib/queries";
 import { CheckCircle2, Sparkles } from "lucide-react";
+import { EmptyDb } from "@/components/EmptyDb";
+
+export const dynamic = "force-dynamic";
 
 export default async function DemoPage() {
-  const site = getSite("site-demo")!;
-  const health = computeSiteHealth("site-demo")!;
-  const sensors = listSensors("site-demo");
-  const readings = latestReadingsForSite("site-demo");
-  const cooling = latestCooling("site-demo", 30);
-  const alerts = listAlerts({ siteId: "site-demo", status: "open" });
+  const site = await getSite("site-demo");
+  if (!site) return <AppShell><EmptyDb context="demo site" /></AppShell>;
+  const [health, sensors, readings, cooling, alerts] = await Promise.all([
+    computeSiteHealth("site-demo"),
+    listSensors("site-demo"),
+    latestReadingsForSite("site-demo"),
+    latestCooling("site-demo", 30),
+    listAlerts({ siteId: "site-demo", status: "open" }),
+  ]);
+  if (!health) return <AppShell><EmptyDb context="demo site" /></AppShell>;
 
   const readingByType = Object.fromEntries(readings.map((r) => {
     const s = sensors.find((sx) => sx.id === r.sensor_id);
@@ -82,8 +89,8 @@ export default async function DemoPage() {
 
         <NarrativeStep n={5} title="التوطين السعودي (الخندق)">
           <div className="grid lg:grid-cols-2 gap-3">
-            <CoolingWaterPanel logs={cooling} />
-            <WaterEfficiency logs={cooling} />
+            {cooling.length > 0 && <CoolingWaterPanel logs={cooling} />}
+            {cooling.length > 0 && <WaterEfficiency logs={cooling} />}
           </div>
         </NarrativeStep>
 

@@ -8,6 +8,7 @@ import { GoldenFlowTrigger } from "@/components/GoldenFlowTrigger";
 import { TransparencyPanel } from "@/components/TransparencyPanel";
 import { RoleSwitcherForm } from "@/components/RoleSwitcher";
 import { NetworkHealth } from "@/components/NetworkHealth";
+import { EmptyDb } from "@/components/EmptyDb";
 import {
   listSites, listAlerts, computeSiteHealth, latestReadingsForSite, listSensors,
 } from "@/lib/queries";
@@ -15,23 +16,27 @@ import { getCurrentRole } from "@/lib/role";
 import { fmtAgo } from "@/lib/format";
 import { Activity, ArrowLeft } from "lucide-react";
 
+// Reads Supabase at request time — never prerender against an empty build-time DB.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
-  const sites = listSites();
-  const role = await getCurrentRole();
+  const [sites, role] = await Promise.all([listSites(), getCurrentRole()]);
+  if (sites.length === 0) return <AppShell><EmptyDb context="fleet" /></AppShell>;
 
   // Primary site = first non-demo site (عسفان R&D) or first
   const primary = sites.find((s) => !s.is_demo_site) ?? sites[0];
-  const health = computeSiteHealth(primary.id)!;
-  const readings = latestReadingsForSite(primary.id);
-  const sensors = listSensors(primary.id);
+  const [health, readings, sensors, allAlerts, fleetHealths] = await Promise.all([
+    computeSiteHealth(primary.id),
+    latestReadingsForSite(primary.id),
+    listSensors(primary.id),
+    listAlerts({ status: "any", limit: 5 }),
+    Promise.all(sites.map((s) => computeSiteHealth(s.id))),
+  ]);
+  if (!health) return <AppShell><EmptyDb context="primary site" /></AppShell>;
+
   const sensorByType = Object.fromEntries(sensors.map((s) => [s.sensor_type, s]));
   const readingBySensor = Object.fromEntries(readings.map((r) => [r.sensor_id, r]));
-
-  const allAlerts = listAlerts({ status: "any", limit: 5 });
-  const openAlerts = allAlerts.filter((a) => a.status === "open" || a.status === "acknowledged");
-
-  // Fleet-wide quick stats
-  const fleet = sites.map((s) => ({ site: s, health: computeSiteHealth(s.id)! }));
+  const fleet = sites.map((s, i) => ({ site: s, health: fleetHealths[i] }));
 
   return (
     <AppShell>
@@ -118,14 +123,14 @@ export default async function HomePage() {
                         {site.status === "online" ? "متصل" : site.status}
                       </span>
                     </td>
-                    <td className="tabular ltr-bdi text-xs">{health.devicesOnline}/{health.devicesTotal}</td>
+                    <td className="tabular ltr-bdi text-xs">{health?.devicesOnline ?? "—"}/{health?.devicesTotal ?? "—"}</td>
                     <td>
-                      {health.openAlerts === 0
+                      {!health || health.openAlerts === 0
                         ? <span className="text-[color:var(--color-iso-ink-muted)] text-xs">—</span>
                         : <span className={`tabular ltr-bdi font-semibold ${health.criticalAlerts > 0 ? "text-[color:var(--color-status-high)]" : "text-[color:var(--color-status-med)]"}`}>{health.openAlerts}</span>}
                     </td>
-                    <td><SourceBadge type={health.hasLiveSource ? "live" : "simulated"} /></td>
-                    <td className="ltr-bdi tabular text-xs text-[color:var(--color-iso-ink-soft)]">{fmtAgo(health.lastSyncAt)}</td>
+                    <td><SourceBadge type={health?.hasLiveSource ? "live" : "simulated"} /></td>
+                    <td className="ltr-bdi tabular text-xs text-[color:var(--color-iso-ink-soft)]">{fmtAgo(health?.lastSyncAt)}</td>
                     <td>
                       <Link href={`/site/${site.id}`} className="text-xs text-[color:var(--color-status-info)] hover:underline flex items-center gap-1">
                         تفصيل <ArrowLeft className="size-3" />

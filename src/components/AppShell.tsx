@@ -1,8 +1,8 @@
 import { NavSidebar } from "./NavSidebar";
 import { listSites } from "@/lib/queries";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const sites = listSites().map((s) => ({ id: s.id, name: s.name, status: s.status }));
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const sites = (await listSites()).map((s) => ({ id: s.id, name: s.name, status: s.status }));
   return (
     <div className="min-h-screen flex bg-[color:var(--color-iso-bg)]" dir="rtl">
       <NavSidebar sites={sites} />

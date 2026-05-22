@@ -9,22 +9,26 @@ import { computeSiteHealth, getSensor, latestReading, recentReadings, listDevice
 import { fmtDateTime, fmtNumber } from "@/lib/format";
 import { ArrowRight } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface Params { params: Promise<{ id: string; s: string }> }
 
 export default async function SensorDetailPage({ params }: Params) {
   const { id, s } = await params;
-  const sensor = getSensor(s);
+  const sensor = await getSensor(s);
   if (!sensor || sensor.site_id !== id) notFound();
-  const health = computeSiteHealth(id)!;
-  const latest = latestReading(s);
-  const trend30d = recentReadings(s, 96 * 30);   // 30-day window
-  const trend24h = recentReadings(s, 96);
-  const devices = listDevices(id);
+  const [health, latest, trend30d, trend24h, devices] = await Promise.all([
+    computeSiteHealth(id),
+    latestReading(s),
+    recentReadings(s, 96 * 30),
+    recentReadings(s, 96),
+    listDevices(id),
+  ]);
+  if (!health) notFound();
   const device = devices.find((d) => d.id === sensor.device_id);
 
   const inSafe = latest ? latest.value >= sensor.min_safe_value && latest.value <= sensor.max_safe_value : false;
 
-  // Last 24h aggregate
   const vals = trend24h.map((r) => r.value);
   const min24 = vals.length ? Math.min(...vals) : null;
   const max24 = vals.length ? Math.max(...vals) : null;

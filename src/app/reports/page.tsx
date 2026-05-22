@@ -3,22 +3,28 @@ import { StatusBar } from "@/components/StatusBar";
 import { ComplianceExport } from "@/components/ComplianceExport";
 import { fmtDateTime, fmtNumber } from "@/lib/format";
 import { computeSiteHealth, listSites, listReports, listControlEvents, listCommands, latestReadingsForSite, listSensors } from "@/lib/queries";
+import { EmptyDb } from "@/components/EmptyDb";
+
+export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const sites = listSites();
+  const sites = await listSites();
+  if (sites.length === 0) return <AppShell><EmptyDb context="reports" /></AppShell>;
   const primary = sites.find((s) => !s.is_demo_site) ?? sites[0];
-  const health = computeSiteHealth(primary.id)!;
-  const reports = listReports();
+  const [health, reports, sensors, latest, events, commands] = await Promise.all([
+    computeSiteHealth(primary.id),
+    listReports(),
+    listSensors(primary.id),
+    latestReadingsForSite(primary.id),
+    listControlEvents({ siteId: primary.id, limit: 30 }),
+    listCommands(primary.id, 30),
+  ]);
+  if (!health) return <AppShell><EmptyDb context="reports" /></AppShell>;
+  const sensorById = Object.fromEntries(sensors.map((s) => [s.id, s]));
+  const commandsMap = Object.fromEntries(commands.map((c) => [c.id, c]));
 
-  // Build a sample compliance window for the primary site (last 7 days)
   const rangeFrom = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
   const rangeTo = new Date().toISOString().slice(0, 10);
-  const sensors = listSensors(primary.id);
-  const sensorById = Object.fromEntries(sensors.map((s) => [s.id, s]));
-  const latest = latestReadingsForSite(primary.id);
-  const events = listControlEvents({ siteId: primary.id, limit: 30 });
-  const commands = listCommands(primary.id, 30);
-  const commandsMap = Object.fromEntries(commands.map((c) => [c.id, c]));
 
   const rows = [
     ...latest.map((r) => ({

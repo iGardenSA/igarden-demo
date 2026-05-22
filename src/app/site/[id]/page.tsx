@@ -21,24 +21,33 @@ import {
 import { getCurrentRole } from "@/lib/role";
 import type { Reading } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 interface Params { params: Promise<{ id: string }> }
 
 export default async function SitePage({ params }: Params) {
   const { id } = await params;
-  const site = getSite(id);
+  const site = await getSite(id);
   if (!site) notFound();
-  const role = await getCurrentRole();
-  const health = computeSiteHealth(id)!;
-  const devices = listDevices(id);
-  const sensors = listSensors(id);
-  const latest = latestReadingsForSite(id);
-  const readingBySensor = Object.fromEntries(latest.map((r) => [r.sensor_id, r]));
-  const trendBySensor = Object.fromEntries(sensors.map((s) => [s.id, recentReadings(s.id, 60)]));
-  const deviceById = Object.fromEntries(devices.map((d) => [d.id, d]));
-  const openAlerts = listAlerts({ siteId: id, status: "open", limit: 10 });
+  const [role, health, devices, sensors, latest, openAlerts, ro, cooling] = await Promise.all([
+    getCurrentRole(),
+    computeSiteHealth(id),
+    listDevices(id),
+    listSensors(id),
+    latestReadingsForSite(id),
+    listAlerts({ siteId: id, status: "open", limit: 10 }),
+    latestRO(id, 1),
+    latestCooling(id, 30),
+  ]);
+  if (!health) notFound();
 
-  const ro = latestRO(id, 1);
-  const cooling = latestCooling(id, 30);
+  const trendEntries = await Promise.all(sensors.map(async (s) => [s.id, await recentReadings(s.id, 60)] as const));
+  const trendBySensor = Object.fromEntries(trendEntries);
+  const readingBySensor = Object.fromEntries(latest.map((r) => [r.sensor_id, r]));
+  const deviceById = Object.fromEntries(devices.map((d) => [d.id, d]));
+
+  const aiEntries = await Promise.all(openAlerts.map(async (a) => [a.id, await getAIRecommendationForAlert(a.id)] as const));
+  const aiByAlert = Object.fromEntries(aiEntries);
 
   const inSafe = (r: Reading | undefined) => {
     if (!r) return false;
@@ -52,7 +61,6 @@ export default async function SitePage({ params }: Params) {
   const waterTemp = latest.find((r) => sensors.find((s) => s.id === r.sensor_id)?.sensor_type === "water_temp");
   const tank = latest.find((r) => sensors.find((s) => s.id === r.sensor_id)?.sensor_type === "tank_level");
 
-  // Persona view: executive hides device list & control, shows water/compliance
   const showExecutiveOnly = role === "executive";
 
   return (
@@ -73,7 +81,6 @@ export default async function SitePage({ params }: Params) {
           </div>
         </header>
 
-        {/* Operator + manager get sensor grid + P&ID. Executive gets water + compliance only. */}
         {!showExecutiveOnly && (
           <>
             <section className="iso-panel p-5">
@@ -94,7 +101,7 @@ export default async function SitePage({ params }: Params) {
                     key={s.id}
                     sensor={s}
                     latest={readingBySensor[s.id]}
-                    trend={trendBySensor[s.id]}
+                    trend={trendBySensor[s.id] ?? []}
                     device={s.device_id ? deviceById[s.device_id] : undefined}
                   />
                 ))}
@@ -107,7 +114,7 @@ export default async function SitePage({ params }: Params) {
           <section className="space-y-3">
             <h2 className="text-sm font-bold">تنبيهات مفتوحة على هذا الموقع</h2>
             {openAlerts.map((a) => {
-              const ai = getAIRecommendationForAlert(a.id);
+              const ai = aiByAlert[a.id];
               const sensor = sensors.find((s) => s.id === a.sensor_id);
               return (
                 <AlertCard key={a.id} alert={a} sensor={sensor}>
