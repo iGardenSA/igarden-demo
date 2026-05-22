@@ -2,6 +2,28 @@
 node_modules/
 .vscode/
 .idea/
-*.log
 *.tmp
 Thumbs.db
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# Env
+.env*.local
+.env
+
+# Generated demo DB
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# Testing
+coverage/
+
+# Logs but keep DECISIONS.log
+*.log
+!DECISIONS.log
