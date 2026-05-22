@@ -75,3 +75,77 @@ Each entry: ISO-date · decision · reason · affects.
   Reason: brief §9 + §10 — commits small and local; push requires G3 approval.
   Affects: git history on feat/smartos-demo-hardening.
 
+══════════════════════════════════════════════════════════════════════
+ SECOND SPRINT — Supabase migration (fix Vercel deploy)
+══════════════════════════════════════════════════════════════════════
+
+2026-05-22 · Switched from SQLite to Supabase Postgres
+  Reason: SQLite is offline-first but doesn't survive Vercel serverless
+          (read-only FS / per-deploy reset) — /ai prerender failed because
+          the build-time DB was empty. Brief-2 mandates online deploy +
+          future MQTT live-data path.
+  Affects: data layer, all pages, deployment story.
+
+2026-05-22 · اختير Pro لعزل البيانات الفيزيائي (قرار علي 22 مايو + G-DATA)
+  Reason: Free tier capped at 2 active projects per admin; org had
+          igarden-web + igarden-ai-council already. New project
+          igarden-smartos-demo (ID: ewcmosjxbqtzmkzakojn) keeps demo
+          seeds physically separated from CRM/leads. $10/mo.
+  Affects: project topology, billing.
+
+2026-05-22 · Postgres ENUM types instead of CHECK strings
+  Reason: cleaner than SQLite-style CHECK(IN(...)); the type system
+          rejects forbidden values at parse time, not just insert time.
+          Same red lines, stronger enforcement: source_type ENUM,
+          requires_human_approval CHECK(=true), reason/disclaimer NOT NULL.
+  Affects: data/schema.sql → supabase migration.
+
+2026-05-22 · RLS: anon SELECT only, service_role writes
+  Reason: brief §3 — public-readable demo, server-only writes.
+          The seed function (seed_demo_data) and all Server Actions go
+          through service_role; the dashboard reads use anon via SSR.
+  Affects: 12 tables, 12 policies, security model.
+
+2026-05-22 · Atomic write paths via Postgres functions (RPC)
+  Reason: Supabase JS has no transactions; the old SQLite version used
+          db.transaction(). Moved issue/execute/trigger logic to plpgsql:
+          issue_command_with_event · execute_command_with_event ·
+          trigger_golden_flow · seed_demo_data. Atomicity matches the
+          original; bonus: callable from any SQL client.
+  Affects: src/lib/queries.ts, src/lib/golden-flow.ts.
+
+2026-05-22 · Pure-SQL seed function instead of TS-only script
+  Reason: TS seed script needs SUPABASE_SERVICE_ROLE_KEY locally; the
+          Postgres seed_demo_data() function runs server-side via
+          execute_sql — no secret leak through .env.local during demo
+          setup. TS script (scripts/seed-supabase.ts) kept as backup
+          for CI-driven re-seeds.
+  Affects: scripts/seed-supabase.ts, migrations/seed function.
+
+2026-05-22 · All 9 pages: export const dynamic = 'force-dynamic'
+  Reason: root cause of /ai prerender error was static generation of
+          server components that read DB. Forcing dynamic = no build-time
+          DB access = build passes even with empty / inaccessible DB.
+  Affects: all src/app/**/page.tsx.
+
+2026-05-22 · Defensive EmptyDb fallback on every list-using page
+  Reason: belt + suspenders. Even with dynamic rendering, a Supabase
+          outage shouldn't crash the page — render a graceful empty state
+          telling the operator to seed.
+  Affects: src/components/EmptyDb.tsx + all pages.
+
+2026-05-22 · Tests: unit (mock) + integration (env-gated, auto-skip)
+  Reason: removing better-sqlite3 killed the old fixtures. Pure DB
+          constraint tests are now structural (in the migration) —
+          re-asserting them needs Postgres. Solution: unit tests with a
+          mocked supabase client (always run) + integration tests that
+          auto-skip when SUPABASE_SERVICE_ROLE_KEY isn't set.
+          15 tests total, 11 pass without env, 4 run with env.
+  Affects: tests/, vitest.config.ts.
+
+2026-05-22 · Branch feat/supabase-migration off feat/smartos-demo-hardening
+  Reason: clean isolation — the previous PR (#3) stays as the SQLite
+          checkpoint; this is the deployable variant. Keeps history clean.
+  Affects: git topology.
+
+
