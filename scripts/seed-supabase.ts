@@ -65,8 +65,11 @@ const COMMON: Omit<SensorSpec, "id" | "source">[] = [
   { type: "light",      name: "شدة الإضاءة (PAR)",        unit: "µmol",  min: 0,   max: 900, centre: 450,  noise: 80 },
 ];
 
+// liveMix is always false: §7 forbids labelling simulated data 'live'. The
+// 'live' enum value is reserved for the future MQTT bridge (post-G2) — any
+// 'live'-badged row in production = real sensor, not seed.
 const SITES = [
-  { id: "site-asfan-rnd",        name: "محطة عسفان · R&D",          location: "عسفان · مكة المكرمة",  site_type: "rnd",         is_demo_site: false, status: "online", liveMix: true  },
+  { id: "site-asfan-rnd",        name: "محطة عسفان · R&D",          location: "عسفان · مكة المكرمة",  site_type: "rnd",         is_demo_site: false, status: "online", liveMix: false },
   { id: "site-industrial-south", name: "موقع صناعي · المنطقة الجنوبية", location: "المنطقة الجنوبية",      site_type: "industrial",  is_demo_site: false, status: "online", liveMix: false },
   { id: "site-demo",             name: "Demo Site · TAQADAM",        location: "KAUST",                site_type: "demo",        is_demo_site: true,  status: "online", liveMix: false },
 ] as const;

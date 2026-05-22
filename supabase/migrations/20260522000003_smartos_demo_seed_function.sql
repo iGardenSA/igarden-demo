@@ -46,21 +46,23 @@ BEGIN
     ('ro',     'وحدة التناضح العكسي',   'ro_unit'::device_kind,    2, 80, '1.0.4')
   ) AS dev(part, name, dtype, heartbeat_min, sig, fw)
   CROSS JOIN (VALUES
-    ('site-asfan-rnd', 'live'::source_type),
+    -- All sources are 'simulated' until a real sensor writes to Supabase
+    -- via the MQTT bridge (post-G2). The 'live' enum value is reserved —
+    -- never used by the seed — so any 'live'-labelled badge in the UI is
+    -- evidence of a real device, never demo data. Brief §7 red line.
+    ('site-asfan-rnd', 'simulated'::source_type),
     ('site-industrial-south', 'simulated'::source_type),
     ('site-demo', 'simulated'::source_type)
   ) AS s(site_id, dev_src)
-  CROSS JOIN LATERAL (SELECT CASE WHEN dev.part IN ('gw','ctrl') THEN dev_src ELSE 'simulated'::source_type END AS src) sx;
+  CROSS JOIN LATERAL (SELECT dev_src AS src) sx;
 
   INSERT INTO sensors (id, site_id, device_id, name, sensor_type, unit, min_safe_value, max_safe_value, status, calibration_due_at, source_type)
   SELECT 'sen-' || site_id || '-' || stype, site_id,
          'dev-' || site_id || '-ctrl',
          sname, stype::sensor_kind, sunit, smin, smax,
          'ok'::sensor_status, v_now + interval '45 days',
-         CASE
-           WHEN site_id = 'site-asfan-rnd' AND stype IN ('ph','water_temp') THEN 'live'::source_type
-           ELSE 'simulated'::source_type
-         END
+         'simulated'::source_type   -- §7: seed never claims 'live'; only a real
+                                    -- sensor writer (post-G2) may insert 'live'.
   FROM (VALUES
     ('ph',         'الأس الهيدروجيني (pH)',   'pH',    5.8, 6.5),
     ('ec',         'التوصيلية الكهربائية (EC)', 'mS/cm', 1.6, 2.4),
