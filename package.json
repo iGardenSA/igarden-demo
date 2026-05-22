@@ -9,12 +9,12 @@
     "start": "next start -p 3210",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "seed": "tsx data/seed.ts",
+    "seed": "tsx scripts/seed-supabase.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "better-sqlite3": "^11.7.0",
+    "@supabase/supabase-js": "^2.106.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "next": "^16.2.4",
@@ -24,7 +24,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
