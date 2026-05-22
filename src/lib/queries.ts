@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getDb } from "./db";
+import { getServerSupabase } from "./supabase/server";
 import type {
   Site, Device, Sensor, Reading, Alert, Command, ControlEvent,
   AIRecommendation, Report, CoolingWaterLog, ROTelemetryRow,
@@ -7,138 +7,187 @@ import type {
 } from "./types";
 
 // =========================================================================
-// READ helpers — safe, typed wrappers over better-sqlite3.
+// READ helpers — async wrappers over Supabase JS. Same signatures as the
+// SQLite version (callers just need to `await`).
+// On error: log + return safe fallback (empty array / undefined) so pages
+// render in degraded mode rather than throw — important for prerender.
 // =========================================================================
 
-export function listSites(): Site[] {
-  return getDb().prepare("SELECT * FROM sites ORDER BY is_demo_site, name").all() as Site[];
+function warn(label: string, error: unknown) {
+  if (error) console.warn(`[queries:${label}]`, error);
 }
 
-export function getSite(id: string): Site | undefined {
-  return getDb().prepare("SELECT * FROM sites WHERE id = ?").get(id) as Site | undefined;
+export async function listSites(): Promise<Site[]> {
+  const { data, error } = await getServerSupabase()
+    .from("sites")
+    .select("*")
+    .order("is_demo_site", { ascending: true })
+    .order("name", { ascending: true });
+  warn("listSites", error);
+  return (data ?? []) as Site[];
 }
 
-export function listDevices(siteId: string): Device[] {
-  return getDb().prepare("SELECT * FROM devices WHERE site_id = ? ORDER BY device_type, name").all(siteId) as Device[];
+export async function getSite(id: string): Promise<Site | undefined> {
+  const { data, error } = await getServerSupabase().from("sites").select("*").eq("id", id).maybeSingle();
+  warn("getSite", error);
+  return (data ?? undefined) as Site | undefined;
 }
 
-export function getDevice(id: string): Device | undefined {
-  return getDb().prepare("SELECT * FROM devices WHERE id = ?").get(id) as Device | undefined;
+export async function listDevices(siteId: string): Promise<Device[]> {
+  const { data, error } = await getServerSupabase()
+    .from("devices").select("*").eq("site_id", siteId)
+    .order("device_type").order("name");
+  warn("listDevices", error);
+  return (data ?? []) as Device[];
 }
 
-export function listSensors(siteId: string): Sensor[] {
-  return getDb().prepare("SELECT * FROM sensors WHERE site_id = ? ORDER BY sensor_type").all(siteId) as Sensor[];
+export async function getDevice(id: string): Promise<Device | undefined> {
+  const { data, error } = await getServerSupabase().from("devices").select("*").eq("id", id).maybeSingle();
+  warn("getDevice", error);
+  return (data ?? undefined) as Device | undefined;
 }
 
-export function getSensor(id: string): Sensor | undefined {
-  return getDb().prepare("SELECT * FROM sensors WHERE id = ?").get(id) as Sensor | undefined;
+export async function listSensors(siteId: string): Promise<Sensor[]> {
+  const { data, error } = await getServerSupabase()
+    .from("sensors").select("*").eq("site_id", siteId).order("sensor_type");
+  warn("listSensors", error);
+  return (data ?? []) as Sensor[];
 }
 
-export function latestReadingsForSite(siteId: string): Reading[] {
-  return getDb().prepare(`
-    SELECT r.* FROM readings r
-    JOIN (
-      SELECT sensor_id, MAX(recorded_at) AS mx
-      FROM readings WHERE site_id = ? GROUP BY sensor_id
-    ) lr ON lr.sensor_id = r.sensor_id AND lr.mx = r.recorded_at
-    WHERE r.site_id = ?
-    ORDER BY r.sensor_id
-  `).all(siteId, siteId) as Reading[];
+export async function getSensor(id: string): Promise<Sensor | undefined> {
+  const { data, error } = await getServerSupabase().from("sensors").select("*").eq("id", id).maybeSingle();
+  warn("getSensor", error);
+  return (data ?? undefined) as Sensor | undefined;
 }
 
-export function latestReading(sensorId: string): Reading | undefined {
-  return getDb().prepare(
-    "SELECT * FROM readings WHERE sensor_id = ? ORDER BY recorded_at DESC LIMIT 1"
-  ).get(sensorId) as Reading | undefined;
+export async function latestReadingsForSite(siteId: string): Promise<Reading[]> {
+  const { data, error } = await getServerSupabase().rpc("latest_readings_for_site", { site_id_param: siteId });
+  warn("latestReadingsForSite", error);
+  return (data ?? []) as Reading[];
 }
 
-export function readingsBetween(sensorId: string, from: string, to: string): Reading[] {
-  return getDb().prepare(
-    "SELECT * FROM readings WHERE sensor_id = ? AND recorded_at BETWEEN ? AND ? ORDER BY recorded_at"
-  ).all(sensorId, from, to) as Reading[];
+export async function latestReading(sensorId: string): Promise<Reading | undefined> {
+  const { data, error } = await getServerSupabase()
+    .from("readings").select("*").eq("sensor_id", sensorId)
+    .order("recorded_at", { ascending: false }).limit(1).maybeSingle();
+  warn("latestReading", error);
+  return (data ?? undefined) as Reading | undefined;
 }
 
-export function recentReadings(sensorId: string, limit = 96): Reading[] {
-  return getDb().prepare(
-    "SELECT * FROM readings WHERE sensor_id = ? ORDER BY recorded_at DESC LIMIT ?"
-  ).all(sensorId, limit).reverse() as Reading[];
+export async function readingsBetween(sensorId: string, from: string, to: string): Promise<Reading[]> {
+  const { data, error } = await getServerSupabase()
+    .from("readings").select("*").eq("sensor_id", sensorId)
+    .gte("recorded_at", from).lte("recorded_at", to).order("recorded_at");
+  warn("readingsBetween", error);
+  return (data ?? []) as Reading[];
 }
 
-export function listAlerts(opts: { siteId?: string; status?: AlertStatus | "any"; limit?: number } = {}): Alert[] {
+export async function recentReadings(sensorId: string, limit = 96): Promise<Reading[]> {
+  const { data, error } = await getServerSupabase()
+    .from("readings").select("*").eq("sensor_id", sensorId)
+    .order("recorded_at", { ascending: false }).limit(limit);
+  warn("recentReadings", error);
+  return ((data ?? []) as Reading[]).reverse();
+}
+
+export async function listAlerts(opts: { siteId?: string; status?: AlertStatus | "any"; limit?: number } = {}): Promise<Alert[]> {
   const { siteId, status = "any", limit = 100 } = opts;
-  const where: string[] = [];
-  const args: unknown[] = [];
-  if (siteId) { where.push("site_id = ?"); args.push(siteId); }
-  if (status !== "any") { where.push("status = ?"); args.push(status); }
-  const sql = `SELECT * FROM alerts ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY created_at DESC LIMIT ?`;
-  args.push(limit);
-  return getDb().prepare(sql).all(...args) as Alert[];
+  let q = getServerSupabase().from("alerts").select("*").order("created_at", { ascending: false }).limit(limit);
+  if (siteId) q = q.eq("site_id", siteId);
+  if (status !== "any") q = q.eq("status", status);
+  const { data, error } = await q;
+  warn("listAlerts", error);
+  return (data ?? []) as Alert[];
 }
 
-export function getAlert(id: string): Alert | undefined {
-  return getDb().prepare("SELECT * FROM alerts WHERE id = ?").get(id) as Alert | undefined;
+export async function getAlert(id: string): Promise<Alert | undefined> {
+  const { data, error } = await getServerSupabase().from("alerts").select("*").eq("id", id).maybeSingle();
+  warn("getAlert", error);
+  return (data ?? undefined) as Alert | undefined;
 }
 
-export function listCommands(siteId?: string, limit = 100): Command[] {
-  if (siteId) {
-    return getDb().prepare(
-      "SELECT * FROM commands WHERE site_id = ? ORDER BY created_at DESC LIMIT ?"
-    ).all(siteId, limit) as Command[];
-  }
-  return getDb().prepare(
-    "SELECT * FROM commands ORDER BY created_at DESC LIMIT ?"
-  ).all(limit) as Command[];
+export async function listCommands(siteId?: string, limit = 100): Promise<Command[]> {
+  let q = getServerSupabase().from("commands").select("*").order("created_at", { ascending: false }).limit(limit);
+  if (siteId) q = q.eq("site_id", siteId);
+  const { data, error } = await q;
+  warn("listCommands", error);
+  return (data ?? []) as Command[];
 }
 
-export function listControlEvents(filters: { siteId?: string; deviceId?: string; type?: string; limit?: number } = {}): ControlEvent[] {
+export async function listControlEvents(filters: { siteId?: string; deviceId?: string; type?: string; limit?: number } = {}): Promise<ControlEvent[]> {
   const { siteId, deviceId, type, limit = 200 } = filters;
-  const where: string[] = [];
-  const args: unknown[] = [];
-  if (siteId) { where.push("site_id = ?"); args.push(siteId); }
-  if (deviceId) { where.push("device_id = ?"); args.push(deviceId); }
-  if (type) { where.push("event_type = ?"); args.push(type); }
-  const sql = `SELECT * FROM control_events ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY created_at DESC LIMIT ?`;
-  args.push(limit);
-  return getDb().prepare(sql).all(...args) as ControlEvent[];
+  let q = getServerSupabase().from("control_events").select("*").order("created_at", { ascending: false }).limit(limit);
+  if (siteId) q = q.eq("site_id", siteId);
+  if (deviceId) q = q.eq("device_id", deviceId);
+  if (type) q = q.eq("event_type", type);
+  const { data, error } = await q;
+  warn("listControlEvents", error);
+  return (data ?? []) as ControlEvent[];
 }
 
-export function listAIRecommendations(siteId?: string, status?: ApprovalStatus): AIRecommendation[] {
-  const where: string[] = [];
-  const args: unknown[] = [];
-  if (siteId) { where.push("site_id = ?"); args.push(siteId); }
-  if (status) { where.push("approval_status = ?"); args.push(status); }
-  const sql = `SELECT * FROM ai_recommendations ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY created_at DESC LIMIT 50`;
-  return getDb().prepare(sql).all(...args) as AIRecommendation[];
+export async function listAIRecommendations(siteId?: string, status?: ApprovalStatus): Promise<AIRecommendation[]> {
+  let q = getServerSupabase().from("ai_recommendations").select("*").order("created_at", { ascending: false }).limit(50);
+  if (siteId) q = q.eq("site_id", siteId);
+  if (status) q = q.eq("approval_status", status);
+  const { data, error } = await q;
+  warn("listAIRecommendations", error);
+  return (data ?? []) as AIRecommendation[];
 }
 
-export function getAIRecommendationForAlert(alertId: string): AIRecommendation | undefined {
-  return getDb().prepare(
-    "SELECT * FROM ai_recommendations WHERE related_alert_id = ? ORDER BY created_at DESC LIMIT 1"
-  ).get(alertId) as AIRecommendation | undefined;
+export async function getAIRecommendationForAlert(alertId: string): Promise<AIRecommendation | undefined> {
+  const { data, error } = await getServerSupabase()
+    .from("ai_recommendations").select("*").eq("related_alert_id", alertId)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  warn("getAIRecommendationForAlert", error);
+  return (data ?? undefined) as AIRecommendation | undefined;
 }
 
-export function listReports(siteId?: string): Report[] {
-  if (siteId) {
-    return getDb().prepare("SELECT * FROM reports WHERE site_id = ? ORDER BY generated_at DESC").all(siteId) as Report[];
-  }
-  return getDb().prepare("SELECT * FROM reports ORDER BY generated_at DESC").all() as Report[];
+export async function listReports(siteId?: string): Promise<Report[]> {
+  let q = getServerSupabase().from("reports").select("*").order("generated_at", { ascending: false });
+  if (siteId) q = q.eq("site_id", siteId);
+  const { data, error } = await q;
+  warn("listReports", error);
+  return (data ?? []) as Report[];
 }
 
-export function latestCooling(siteId: string, limit = 30): CoolingWaterLog[] {
-  return getDb().prepare(
-    "SELECT * FROM cooling_water_logs WHERE site_id = ? ORDER BY recorded_at DESC LIMIT ?"
-  ).all(siteId, limit) as CoolingWaterLog[];
+export async function latestCooling(siteId: string, limit = 30): Promise<CoolingWaterLog[]> {
+  const { data, error } = await getServerSupabase()
+    .from("cooling_water_logs").select("*").eq("site_id", siteId)
+    .order("recorded_at", { ascending: false }).limit(limit);
+  warn("latestCooling", error);
+  return (data ?? []) as CoolingWaterLog[];
 }
 
-export function latestRO(siteId: string, limit = 1): ROTelemetryRow[] {
-  return getDb().prepare(
-    "SELECT * FROM ro_telemetry WHERE site_id = ? ORDER BY recorded_at DESC LIMIT ?"
-  ).all(siteId, limit) as ROTelemetryRow[];
+export async function latestRO(siteId: string, limit = 1): Promise<ROTelemetryRow[]> {
+  const { data, error } = await getServerSupabase()
+    .from("ro_telemetry").select("*").eq("site_id", siteId)
+    .order("recorded_at", { ascending: false }).limit(limit);
+  warn("latestRO", error);
+  return (data ?? []) as ROTelemetryRow[];
+}
+
+export async function listMaintenance(limit = 30): Promise<Array<{
+  id: number; site_id: string; site_name: string; device_id: string | null;
+  action_type: string; notes: string | null; performed_by: string; performed_at: string;
+}>> {
+  const { data, error } = await getServerSupabase()
+    .from("maintenance_logs")
+    .select("id, site_id, device_id, action_type, notes, performed_by, performed_at, sites!inner(name)")
+    .order("performed_at", { ascending: false })
+    .limit(limit);
+  warn("listMaintenance", error);
+  type Row = { id: number; site_id: string; device_id: string | null; action_type: string; notes: string | null; performed_by: string; performed_at: string; sites: { name: string } | { name: string }[] };
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: r.id, site_id: r.site_id, device_id: r.device_id, action_type: r.action_type,
+    notes: r.notes, performed_by: r.performed_by, performed_at: r.performed_at,
+    site_name: Array.isArray(r.sites) ? r.sites[0]?.name ?? r.site_id : r.sites?.name ?? r.site_id,
+  }));
 }
 
 // =========================================================================
-// WRITE helpers — enforce safety invariants at the helper layer too,
-// so a caller cannot bypass them by malformed UI input.
+// WRITE helpers — go through the issue_command_with_event RPC so atomicity
+// matches the SQLite tx version. Brief §3 + §5 invariants enforced 3x:
+// table CHECK + RPC plpgsql + this TS pre-check.
 // =========================================================================
 
 export interface IssueCommandInput {
@@ -160,99 +209,74 @@ export class CommandSafetyError extends Error {
   }
 }
 
-/**
- * Issues a command + an `issued` control_event in one transaction.
- * Enforces brief §3 + §5 invariants:
- *   - reason non-empty
- *   - confirmedBy non-empty
- *   - safetyLockEnabled MUST be true (operator must explicitly arm)
- */
-export function issueCommand(input: IssueCommandInput): { commandId: string; eventId: number } {
-  if (!input.reason?.trim()) throw new CommandSafetyError("REASON_REQUIRED", "Reason required");
-  if (!input.confirmedBy?.trim()) throw new CommandSafetyError("CONFIRM_REQUIRED", "Dual confirmation required");
-  if (!input.safetyLockEnabled) throw new CommandSafetyError("SAFETY_LOCK_OFF", "Safety lock must be armed");
+export async function issueCommand(input: IssueCommandInput): Promise<{ commandId: string }> {
+  if (!input.reason?.trim())       throw new CommandSafetyError("REASON_REQUIRED", "Reason required");
+  if (!input.confirmedBy?.trim())  throw new CommandSafetyError("CONFIRM_REQUIRED", "Dual confirmation required");
+  if (!input.safetyLockEnabled)    throw new CommandSafetyError("SAFETY_LOCK_OFF", "Safety lock must be armed");
 
   const id = randomUUID();
-  const db = getDb();
-
-  // Verify referenced device exists and belongs to site
-  const dev = db.prepare("SELECT id FROM devices WHERE id = ? AND site_id = ?").get(input.deviceId, input.siteId);
-  if (!dev) throw new CommandSafetyError("DEVICE_NOT_FOUND", "Device not found in site");
-
-  const tx = db.transaction(() => {
-    db.prepare(`
-      INSERT INTO commands
-      (id, site_id, device_id, command_type, requested_state, reason, status,
-       requested_by, confirmed_by, safety_lock_enabled)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, 1)
-    `).run(id, input.siteId, input.deviceId, input.commandType, input.requestedState,
-      input.reason.trim(), input.requestedBy, input.confirmedBy.trim());
-
-    const res = db.prepare(`
-      INSERT INTO control_events
-      (command_id, site_id, device_id, event_type, previous_state, new_state, source_type)
-      VALUES (?, ?, ?, 'issued', NULL, ?, 'simulated')
-    `).run(id, input.siteId, input.deviceId, input.requestedState);
-
-    return { commandId: id, eventId: Number(res.lastInsertRowid) };
+  const { error } = await getServerSupabase().rpc("issue_command_with_event", {
+    p_id: id,
+    p_site_id: input.siteId,
+    p_device_id: input.deviceId,
+    p_command_type: input.commandType,
+    p_requested_state: input.requestedState,
+    p_reason: input.reason.trim(),
+    p_requested_by: input.requestedBy,
+    p_confirmed_by: input.confirmedBy.trim(),
   });
-
-  return tx();
+  if (error) {
+    if (/REASON_REQUIRED/.test(error.message))    throw new CommandSafetyError("REASON_REQUIRED", "Reason required");
+    if (/CONFIRM_REQUIRED/.test(error.message))   throw new CommandSafetyError("CONFIRM_REQUIRED", "Dual confirmation required");
+    if (/DEVICE_NOT_FOUND/.test(error.message))   throw new CommandSafetyError("DEVICE_NOT_FOUND", "Device not found in site");
+    throw new CommandSafetyError("RPC_ERROR", error.message);
+  }
+  return { commandId: id };
 }
 
-/**
- * Marks a command as executed and writes the executed event.
- * Simulated-mode side effect (per G2: no real actuation).
- */
-export function executeCommand(commandId: string): void {
-  const db = getDb();
-  const cmd = db.prepare("SELECT * FROM commands WHERE id = ?").get(commandId) as Command | undefined;
-  if (!cmd) throw new CommandSafetyError("CMD_NOT_FOUND", "Command not found");
-  if (cmd.status !== "pending" && cmd.status !== "acknowledged") return;
-
-  const tx = db.transaction(() => {
-    db.prepare("UPDATE commands SET status = 'executed', acknowledged_at = datetime('now') WHERE id = ?").run(commandId);
-    db.prepare(`
-      INSERT INTO control_events
-      (command_id, site_id, device_id, event_type, previous_state, new_state, source_type)
-      VALUES (?, ?, ?, 'executed', NULL, ?, 'simulated')
-    `).run(commandId, cmd.site_id, cmd.device_id, cmd.requested_state);
-  });
-  tx();
+export async function executeCommand(commandId: string): Promise<void> {
+  const { error } = await getServerSupabase().rpc("execute_command_with_event", { p_command_id: commandId });
+  warn("executeCommand", error);
 }
 
-export function acknowledgeAlert(alertId: string, by: string): void {
-  getDb().prepare(
-    "UPDATE alerts SET status = 'acknowledged', acknowledged_at = datetime('now'), assigned_to = ? WHERE id = ? AND status = 'open'"
-  ).run(by, alertId);
+export async function acknowledgeAlert(alertId: string, by: string): Promise<void> {
+  const { error } = await getServerSupabase()
+    .from("alerts")
+    .update({ status: "acknowledged", acknowledged_at: new Date().toISOString(), assigned_to: by })
+    .eq("id", alertId).eq("status", "open");
+  warn("acknowledgeAlert", error);
 }
 
-export function resolveAlert(alertId: string): void {
-  getDb().prepare(
-    "UPDATE alerts SET status = 'resolved', resolved_at = datetime('now') WHERE id = ?"
-  ).run(alertId);
+export async function resolveAlert(alertId: string): Promise<void> {
+  const { error } = await getServerSupabase()
+    .from("alerts")
+    .update({ status: "resolved", resolved_at: new Date().toISOString() })
+    .eq("id", alertId);
+  warn("resolveAlert", error);
 }
 
-export function decideAIRecommendation(id: string, decision: ApprovalStatus, by: string): void {
+export async function decideAIRecommendation(id: string, decision: ApprovalStatus, by: string): Promise<void> {
   if (decision === "pending") return;
-  getDb().prepare(
-    "UPDATE ai_recommendations SET approval_status = ?, approved_by = ? WHERE id = ?"
-  ).run(decision, by, id);
+  const { error } = await getServerSupabase()
+    .from("ai_recommendations")
+    .update({ approval_status: decision, approved_by: by })
+    .eq("id", id);
+  warn("decideAIRecommendation", error);
 }
 
-export function insertReading(input: {
+export async function insertReading(input: {
   siteId: string; sensorId: string; value: number; unit: string;
   status: Reading["status"]; sourceType: SourceType; recordedAt: string;
-}): number {
-  const res = getDb().prepare(`
-    INSERT INTO readings (site_id, sensor_id, value, unit, status, source_type, recorded_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(input.siteId, input.sensorId, input.value, input.unit, input.status, input.sourceType, input.recordedAt);
-  return Number(res.lastInsertRowid);
+}): Promise<void> {
+  const { error } = await getServerSupabase().from("readings").insert({
+    site_id: input.siteId, sensor_id: input.sensorId, value: input.value, unit: input.unit,
+    status: input.status, source_type: input.sourceType, recorded_at: input.recordedAt,
+  });
+  warn("insertReading", error);
 }
 
 // =========================================================================
-// Site-wide health summary used by StatusBar
+// Site-wide health summary used by StatusBar — single round-trip via RPC.
 // =========================================================================
 export interface SiteHealth {
   site: Site;
@@ -265,37 +289,29 @@ export interface SiteHealth {
   hasStaleSensor: boolean;
 }
 
-export function computeSiteHealth(siteId: string): SiteHealth | null {
-  const db = getDb();
-  const site = getSite(siteId);
+export async function computeSiteHealth(siteId: string): Promise<SiteHealth | null> {
+  const site = await getSite(siteId);
   if (!site) return null;
 
-  const devices = listDevices(siteId);
-  const onlineCount = devices.filter((d) => d.status === "online").length;
-
-  const alertRows = db.prepare(
-    "SELECT severity, COUNT(*) AS c FROM alerts WHERE site_id = ? AND status IN ('open','acknowledged') GROUP BY severity"
-  ).all(siteId) as { severity: string; c: number }[];
-
-  const openAlerts = alertRows.reduce((s, r) => s + r.c, 0);
-  const criticalAlerts = alertRows.find((r) => r.severity === "p1")?.c ?? 0;
-
-  const lastRow = db.prepare(
-    "SELECT MAX(recorded_at) AS last FROM readings WHERE site_id = ?"
-  ).get(siteId) as { last: string | null };
-
-  const sensors = listSensors(siteId);
-  const hasLive = sensors.some((s) => s.source_type === "live") || devices.some((d) => d.source_type === "live");
-  const hasStale = sensors.some((s) => s.status === "stale" || s.status === "offline");
+  const { data, error } = await getServerSupabase().rpc("site_health", { site_id_param: siteId });
+  warn("computeSiteHealth", error);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return {
+    site,
+    devicesOnline: 0, devicesTotal: 0,
+    openAlerts: 0, criticalAlerts: 0,
+    lastSyncAt: null,
+    hasLiveSource: false, hasStaleSensor: false,
+  };
 
   return {
     site,
-    devicesOnline: onlineCount,
-    devicesTotal: devices.length,
-    openAlerts,
-    criticalAlerts,
-    lastSyncAt: lastRow?.last ?? null,
-    hasLiveSource: hasLive,
-    hasStaleSensor: hasStale,
+    devicesOnline: row.devices_online ?? 0,
+    devicesTotal: row.devices_total ?? 0,
+    openAlerts: row.open_alerts ?? 0,
+    criticalAlerts: row.critical_alerts ?? 0,
+    lastSyncAt: row.last_sync_at ?? null,
+    hasLiveSource: row.has_live_source ?? false,
+    hasStaleSensor: row.has_stale_sensor ?? false,
   };
 }

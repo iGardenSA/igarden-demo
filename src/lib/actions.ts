@@ -26,7 +26,7 @@ export async function issueCommandAction(input: {
 }): Promise<IssueCommandResult> {
   try {
     if (!input.safetyLockEnabled) return { ok: false, error: "Safety lock must be armed" };
-    const { commandId } = dbIssueCommand({
+    const { commandId } = await dbIssueCommand({
       siteId: input.siteId,
       deviceId: input.deviceId,
       commandType: input.commandType,
@@ -37,7 +37,7 @@ export async function issueCommandAction(input: {
       safetyLockEnabled: true,
     });
     // immediately mark executed (simulated — no real GPIO per G2)
-    executeCommand(commandId);
+    await executeCommand(commandId);
     revalidatePath("/logs");
     revalidatePath("/alerts");
     revalidatePath(`/site/${input.siteId}`);
@@ -50,23 +50,23 @@ export async function issueCommandAction(input: {
 }
 
 export async function decideAIAction(id: string, decision: ApprovalStatus, by = "op-current"): Promise<void> {
-  decideAIRecommendation(id, decision, by);
+  await decideAIRecommendation(id, decision, by);
   revalidatePath("/ai");
   revalidatePath("/alerts");
 }
 
 export async function ackAlertAction(id: string, by = "op-current"): Promise<void> {
-  acknowledgeAlert(id, by);
+  await acknowledgeAlert(id, by);
   revalidatePath("/alerts");
 }
 
 export async function resolveAlertAction(id: string): Promise<void> {
-  resolveAlert(id);
+  await resolveAlert(id);
   revalidatePath("/alerts");
 }
 
 export async function triggerGoldenFlowAction(): Promise<{ ok: boolean; alertId?: string }> {
-  const r = runGolden();
+  const r = await runGolden();
   revalidatePath("/");
   revalidatePath("/demo");
   revalidatePath("/alerts");
