@@ -148,4 +148,58 @@ Each entry: ISO-date · decision · reason · affects.
           checkpoint; this is the deployable variant. Keeps history clean.
   Affects: git topology.
 
+══════════════════════════════════════════════════════════════════════
+ SECOND SPRINT — HOTFIX (post-G3) before Preview
+══════════════════════════════════════════════════════════════════════
+
+2026-05-23 · Removed 'live' overclaim from seed (commit 70673ce)
+  Reason: عسفان pH + water_temp + gateway + controller were seeded
+          with source_type='live' while values are synthesized by
+          Postgres random()/sine — direct §7 violation
+          ("simulated data without simulated badge"). Fix: every seed
+          row is now 'simulated'. The 'live' enum is reserved for the
+          post-G2 MQTT bridge so any 'live'-badged row in the running
+          UI proves a real device, never demo data.
+  Affects: scripts/seed-supabase.ts +
+           supabase/migrations/20260522000003_*.sql +
+           one-shot UPDATE patched the rows already in Supabase.
+
+══════════════════════════════════════════════════════════════════════
+ S0 DISCOVERY — main (RC-2) divergence audit (read-only)
+══════════════════════════════════════════════════════════════════════
+
+2026-05-23 · اكتُشف تباعد main (RC-2) عن فرع الديمو — توقف للقرار المعماري
+  Findings:
+    • main advanced 4 commits since fd8e45b (last: 0280c30 on 2026-05-08
+      "Merge RC-2: bilingual UI + login gate + compliance hardening").
+    • +13,584 / -5,096 lines. 49 files. RC-2 is a parallel build that
+      ALSO chose Supabase but for a different domain (compliance &
+      traceability, not real-time HMI).
+    • Vercel state:
+        - main @0280c30  : SUCCESS deploy (RC-2 is live)
+        - PR #4 (mine)   : FAILED preview deploy (the trigger)
+        - PR #3 (SQLite) : FAILED  (expected — SQLite cannot run on Vercel)
+    • App structure clash: RC-2 = app/ (root), mine = src/app/.
+      Two Next.js app directories cannot coexist (build error).
+    • Schema: ZERO table-name overlap. RC-2 tables (farms, zones,
+      batches, audit_events, input_usage_logs, calibration_logs,
+      water_sources, report_exports) are complementary to mine
+      (sites, devices, sensors, readings, alerts, commands,
+      control_events, maintenance_logs, reports, ai_recommendations,
+      cooling_water_logs, ro_telemetry). Could coexist in one Postgres.
+    • Compliance: RC-2 ships a mature engine (compliance-engine.ts +
+      standards.ts + docs/global-standards-gap-analysis.md mapping
+      GLOBALG.A.P. IFA v6 / ISO 22005 / HACCP / EU MRL / ISO 22000 /
+      ISO 27001 with control-point gap analysis + 3-sprint roadmap).
+      Mine ships only ComplianceExport.tsx (CSV + print-to-PDF + footer).
+      RC-2's compliance posture > mine.
+    • Auth: RC-2 has Supabase Auth + LoginScreen + farm_memberships RLS.
+      Mine has none (anon-read).
+    • i18n: RC-2 bilingual (ar/en) via I18nContext + translations.ts.
+      Mine Arabic-only.
+  Status: NO destructive action taken. PR #4 unchanged. main unchanged.
+          Awaiting user choice between Path-1 (rebuild on RC-2) and
+          Path-3 (cherry-pick ISA-101/Golden-Flow features onto RC-2).
+  Affects: blocks G4 deploy decision.
+
 
