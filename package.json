@@ -2,15 +2,20 @@
   "name": "demo-igarden",
   "version": "1.0.0",
   "private": true,
-  "description": "iGarden Smart OS — Demo Seed (demo.igarden.sa)",
+  "description": "iGarden Smart OS — Demo Seed (demo.igarden.sa) · compliance (RC-2) + operations (Smart OS)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "seed": "tsx scripts/seed-supabase.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.3",
+    "clsx": "^2.1.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",
@@ -18,16 +23,23 @@
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^2.15.0"
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.1.6",
-    "typescript": "^5.7.0"
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=20.0.0"
