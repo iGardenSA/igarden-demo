@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 /**
  * Seed script — 30-day deterministic demo data against Supabase.
- * Three sites: عسفان R&D · موقع صناعي · Demo Site. Pre-baked EC excursion
+ * Three sites: R&D · موقع صناعي · Demo Site. Pre-baked EC excursion
  * on Demo Site that drives the Golden Flow.
  *
  * Run: `npm run seed`  (requires .env.local with SUPABASE_SERVICE_ROLE_KEY)
@@ -69,9 +69,9 @@ const COMMON: Omit<SensorSpec, "id" | "source">[] = [
 // 'live' enum value is reserved for the future MQTT bridge (post-G2) — any
 // 'live'-badged row in production = real sensor, not seed.
 const SITES = [
-  { id: "site-asfan-rnd",        name: "محطة عسفان · R&D",          location: "عسفان · مكة المكرمة",  site_type: "rnd",         is_demo_site: false, status: "online", liveMix: false },
+  { id: "site-asfan-rnd",        name: "محطة بحث وتطوير",           location: "منطقة بحث وتطوير",      site_type: "rnd",         is_demo_site: false, status: "online", liveMix: false },
   { id: "site-industrial-south", name: "موقع صناعي · المنطقة الجنوبية", location: "المنطقة الجنوبية",      site_type: "industrial",  is_demo_site: false, status: "online", liveMix: false },
-  { id: "site-demo",             name: "Demo Site · TAQADAM",        location: "KAUST",                site_type: "demo",        is_demo_site: true,  status: "online", liveMix: false },
+  { id: "site-demo",             name: "موقع تجريبي · محمية نموذجية", location: "بيئة تجريبيّة",         site_type: "demo",        is_demo_site: true,  status: "online", liveMix: false },
 ] as const;
 
 async function wipe() {

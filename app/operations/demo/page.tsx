@@ -36,7 +36,7 @@ export default async function DemoPage() {
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
               <div className="text-[11px] uppercase tracking-wider opacity-80 flex items-center gap-2">
-                <Sparkles className="size-3.5" /> وضع المستثمر · TAQADAM
+                <Sparkles className="size-3.5" /> وضع المستثمر · ديمو
               </div>
               <h1 className="text-2xl font-bold mt-1">iGarden Smart OS</h1>
               <p className="text-sm opacity-90 mt-1 max-w-2xl">
@@ -97,8 +97,8 @@ export default async function DemoPage() {
         <NarrativeStep n={6} title="نموذج الإيراد المتكرّر"
           body="باقة Smart OS = اشتراك شهري + خدمات تشغيل (SLA على الاستجابة) + تقارير امتثال. ليست بيع جهاز لمرّة واحدة." />
 
-        <NarrativeStep n={7} title="معالم TAQADAM"
-          body="الخارج من البرنامج: ربط FastAPI + MQTT حيّ على عسفان (G2)، نشر demo.igarden.sa (G4)، استكمال تكامل MEWA/Naama (مبدئياً مهيّأ بنيوياً، لا يدّعي اعتماداً)." />
+        <NarrativeStep n={7} title="ما بعد الديمو"
+          body="الخارج من البرنامج التجريبي: ربط FastAPI + MQTT حيّ على بيئة البحث والتطوير (G2)، نشر demo.igarden.sa (G4)، استكمال تكامل MEWA/Naama (مبدئياً مهيّأ بنيوياً، لا يدّعي اعتماداً)." />
 
         <footer className="iso-panel-flat p-4 text-xs text-[color:var(--color-iso-ink-muted)] flex items-start gap-2">
           <CheckCircle2 className="size-4 text-[color:var(--color-status-ok)] mt-0.5" />

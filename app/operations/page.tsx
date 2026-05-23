@@ -23,7 +23,7 @@ export default async function HomePage() {
   const [sites, role] = await Promise.all([listSites(), getCurrentRole()]);
   if (sites.length === 0) return <AppShell><EmptyDb context="fleet" /></AppShell>;
 
-  // Primary site = first non-demo site (عسفان R&D) or first
+  // Primary site = first non-demo site (R&D) or first
   const primary = sites.find((s) => !s.is_demo_site) ?? sites[0];
   const [health, readings, sensors, allAlerts, fleetHealths] = await Promise.all([
     computeSiteHealth(primary.id),

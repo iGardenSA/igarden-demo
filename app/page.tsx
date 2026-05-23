@@ -367,7 +367,7 @@ function DemoApp() {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: isRunning ? C.lime : C.muted, boxShadow: isRunning ? `0 0 10px ${C.lime}` : 'none', animation: isRunning ? 'pulse 1.5s infinite' : 'none', flexShrink: 0 }}></span>
               <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{isRunning ? (isMobile ? t.common.livePulseShort : t.common.livePulse) : t.common.paused}</span>
             </div>
-            {/* ─── Live Operations CTA (TAQADAM story link to /operations) ─── */}
+            {/* ─── Live Operations CTA (link to /operations) ─── */}
             <a
               href="/operations/demo"
               title="العرض الحيّ · Live Operations"

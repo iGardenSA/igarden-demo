@@ -29,9 +29,9 @@ BEGIN
   DELETE FROM sites;
 
   INSERT INTO sites (id, name, location, site_type, status, is_demo_site, created_at, updated_at) VALUES
-    ('site-asfan-rnd',        'محطة عسفان · R&D',          'عسفان · مكة المكرمة',  'rnd',        'online', false, v_now - interval '30 days', v_now),
+    ('site-asfan-rnd',        'محطة بحث وتطوير',           'منطقة بحث وتطوير',      'rnd',        'online', false, v_now - interval '30 days', v_now),
     ('site-industrial-south', 'موقع صناعي · المنطقة الجنوبية', 'المنطقة الجنوبية',      'industrial', 'online', false, v_now - interval '30 days', v_now),
-    ('site-demo',             'Demo Site · TAQADAM',        'KAUST',                'demo',       'online', true,  v_now - interval '30 days', v_now);
+    ('site-demo',             'موقع تجريبي · محمية نموذجية',  'بيئة تجريبيّة',         'demo',       'online', true,  v_now - interval '30 days', v_now);
 
   INSERT INTO devices (id, site_id, name, device_type, status, last_heartbeat_at, signal_strength, firmware_version, source_type)
   SELECT 'dev-' || site_id || '-' || part, site_id, name, dtype, 'online',
