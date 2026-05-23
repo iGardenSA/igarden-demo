@@ -1,4 +1,4 @@
-import { getServerSupabase } from "./supabase/server";
+import { getServerSupabase } from "./supabase-server";
 
 /**
  * Brief §4 Phase 2.1 — the one-button incident at the heart of the demo.

@@ -9,7 +9,7 @@ import {
   decideAIRecommendation,
   CommandSafetyError,
 } from "./queries";
-import type { CommandType, ApprovalStatus } from "./types";
+import type { CommandType, ApprovalStatus } from "./smartos-types";
 import { triggerGoldenFlow as runGolden } from "./golden-flow";
 
 export interface IssueCommandResult { ok: boolean; error?: string; commandId?: string; }

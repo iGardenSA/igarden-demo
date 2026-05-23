@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { cookies } from "next/headers";
-import type { Role } from "./types";
+import type { Role } from "./smartos-types";
 
 const ROLE_COOKIE = "ig_role";
 export const DEFAULT_ROLE: Role = "operator";

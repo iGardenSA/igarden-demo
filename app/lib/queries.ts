@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { getServerSupabase } from "./supabase/server";
+import { getServerSupabase } from "./supabase-server";
 import type {
   Site, Device, Sensor, Reading, Alert, Command, ControlEvent,
   AIRecommendation, Report, CoolingWaterLog, ROTelemetryRow,
   SourceType, AlertStatus, ApprovalStatus,
-} from "./types";
+} from "./smartos-types";
 
 // =========================================================================
 // READ helpers — async wrappers over Supabase JS. Same signatures as the
