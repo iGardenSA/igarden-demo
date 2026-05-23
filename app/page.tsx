@@ -367,6 +367,15 @@ function DemoApp() {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: isRunning ? C.lime : C.muted, boxShadow: isRunning ? `0 0 10px ${C.lime}` : 'none', animation: isRunning ? 'pulse 1.5s infinite' : 'none', flexShrink: 0 }}></span>
               <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{isRunning ? (isMobile ? t.common.livePulseShort : t.common.livePulse) : t.common.paused}</span>
             </div>
+            {/* ─── Live Operations CTA (link to /operations) ─── */}
+            <a
+              href="/operations/demo"
+              title="العرض الحيّ · Live Operations"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.lime, color: C.forestDark, border: `1px solid ${C.lime}`, padding: isMobile ? '6px 12px' : '7px 14px', borderRadius: 20, fontFamily: 'inherit', fontSize: isMobile ? 11 : 12, fontWeight: 800, textDecoration: 'none', letterSpacing: '0.01em' }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.forestDark }} />
+              {isMobile ? 'العرض الحيّ' : 'العرض الحيّ · Live Operations'} ←
+            </a>
             <button
               type="button"
               onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}

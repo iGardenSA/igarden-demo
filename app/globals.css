@@ -1,8 +1,13 @@
+@import "tailwindcss";
+
 /* ═══════════════════════════════════════════════════════════════════
-   iGarden Smart OS Demo — Global Styles
-   Reset أساسي + إعدادات Tajawal + RTL
+   iGarden Smart OS — Global Styles (RC-2 base + Smart-OS HMI tokens)
+   Layer 1: RC-2 reset + Tajawal + RTL
+   Layer 2: Tailwind v4 (utilities)
+   Layer 3: ISA-101 design tokens for /operations HMI
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ─── Layer 1: RC-2 reset (preserved as-is) ─────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -23,20 +28,11 @@ body {
   overflow-x: hidden;
 }
 
-button {
-  font-family: inherit;
-}
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; }
 
-input, select, textarea {
-  font-family: inherit;
-}
+nav div::-webkit-scrollbar { display: none; }
 
-/* تحسين شريط التمرير الأفقي للتبويبات على الجوال */
-nav div::-webkit-scrollbar {
-  display: none;
-}
-
-/* تحسين focus للوصولية */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -45,8 +41,126 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/* منع flash of unstyled content للخط العربي */
 @font-face {
   font-family: 'Tajawal';
   font-display: swap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Layer 3: ISA-101 design tokens — used by /operations HMI components
+   ═══════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* Brand (matches RC-2's #FAFAF7 + #7CB342) */
+  --color-deep-green: #0F3D2E;
+  --color-corp-green: #1B5E3F;
+  --color-lime: #7CB342;
+  --color-bright-lime: #A5D63F;
+  --color-cream: #FAFAF7;
+
+  /* ISA-101 neutral field — grey dominates */
+  --color-iso-bg: #F5F6F7;
+  --color-iso-panel: #FFFFFF;
+  --color-iso-panel-alt: #FAFBFC;
+  --color-iso-border: #DDE1E5;
+  --color-iso-border-strong: #B9C0C7;
+  --color-iso-ink: #1F2933;
+  --color-iso-ink-soft: #4A5568;
+  --color-iso-ink-muted: #6B7785;
+  --color-iso-fill: #E3E7EA;
+
+  /* ISA-101 status — colour only for anomaly */
+  --color-status-normal: #4A5568;
+  --color-status-info: #2563EB;
+  --color-status-low: #B45309;
+  --color-status-med: #C2410C;
+  --color-status-high: #B91C1C;
+  --color-status-ok: #15803D;
+
+  /* Source badge palette */
+  --color-src-live: #15803D;
+  --color-src-simulated: #6D28D9;
+  --color-src-manual: #C2410C;
+  --color-src-offline: #4A5568;
+
+  --font-arabic: "Tajawal", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-latin: "Poppins", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px;
+}
+
+/* ─── HMI-only utility classes (scoped to /operations via class usage) ── */
+.num, [data-num], .tabular {
+  font-family: var(--font-latin), 'Tajawal', system-ui;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.ltr-bdi {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.iso-panel {
+  background: var(--color-iso-panel);
+  border: 1px solid var(--color-iso-border);
+  border-radius: var(--radius-md);
+}
+.iso-panel-flat {
+  background: var(--color-iso-panel);
+  border-bottom: 1px solid var(--color-iso-border);
+}
+.iso-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.iso-divider { height: 1px; background: var(--color-iso-border); }
+.iso-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.iso-table th, .iso-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: start;
+  border-bottom: 1px solid var(--color-iso-border);
+}
+.iso-table th {
+  font-weight: 600;
+  color: var(--color-iso-ink-soft);
+  background: var(--color-iso-panel-alt);
+}
+.iso-table tbody tr:hover { background: var(--color-iso-panel-alt); }
+
+@keyframes ig-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-pulse-soft { animation: ig-pulse-soft 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-soft { animation: none; }
+}
+
+.disclaimer-footer {
+  font-size: var(--text-xs);
+  color: var(--color-iso-ink-muted);
+  padding: 0.5rem 0.75rem;
+  border-top: 1px dashed var(--color-iso-border);
+  line-height: 1.5;
 }
