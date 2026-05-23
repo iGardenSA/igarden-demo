@@ -19,7 +19,7 @@ import {
   recentReadings, getSite, listAlerts, getAIRecommendationForAlert, latestRO, latestCooling,
 } from "@/lib/queries";
 import { getCurrentRole } from "@/lib/role";
-import type { Reading } from "@/lib/types";
+import type { Reading } from "@/lib/smartos-types";
 
 export const dynamic = "force-dynamic";
 
