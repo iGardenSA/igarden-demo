@@ -1,5 +1,5 @@
 import { describe, it, expectTypeOf } from "vitest";
-import type { SourceType, Severity, ApprovalStatus, SensorStatus } from "../src/lib/types";
+import type { SourceType, Severity, ApprovalStatus, SensorStatus } from "../app/lib/smartos-types";
 
 // Type-level assertions that the TS literal unions for §7 red-line ENUMs
 // exactly match the Postgres ENUM values. The Postgres CHECK + ENUM types

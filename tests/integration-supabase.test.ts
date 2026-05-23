@@ -10,12 +10,12 @@ const d = HAS_ENV ? describe : describe.skip;
 d("Supabase integration — schema constraints + golden flow", () => {
   beforeAll(async () => {
     // Lazy import — only when env is present, to avoid initialising the client.
-    const { triggerGoldenFlow } = await import("../src/lib/golden-flow");
+    const { triggerGoldenFlow } = await import("../app/lib/golden-flow");
     await triggerGoldenFlow();
   });
 
   it("rejects a reading with an invalid source_type value", async () => {
-    const { getServerSupabase } = await import("../src/lib/supabase/server");
+    const { getServerSupabase } = await import("../app/lib/supabase-server");
     const sb = getServerSupabase();
     const { error } = await sb.from("readings").insert({
       site_id: "site-demo", sensor_id: "sen-site-demo-ec", value: 2,
@@ -28,7 +28,7 @@ d("Supabase integration — schema constraints + golden flow", () => {
   });
 
   it("rejects an ai_recommendation with requires_human_approval=false", async () => {
-    const { getServerSupabase } = await import("../src/lib/supabase/server");
+    const { getServerSupabase } = await import("../app/lib/supabase-server");
     const sb = getServerSupabase();
     const { error } = await sb.from("ai_recommendations").insert({
       id: "ai-fail-" + Date.now(),
@@ -41,7 +41,7 @@ d("Supabase integration — schema constraints + golden flow", () => {
   });
 
   it("rejects a report without a disclaimer", async () => {
-    const { getServerSupabase } = await import("../src/lib/supabase/server");
+    const { getServerSupabase } = await import("../app/lib/supabase-server");
     const sb = getServerSupabase();
     const { error } = await sb.from("reports").insert({
       id: "rep-fail-" + Date.now(),
@@ -55,7 +55,7 @@ d("Supabase integration — schema constraints + golden flow", () => {
   });
 
   it("Golden Flow leaves a pending high-confidence AI recommendation on site-demo", async () => {
-    const { getServerSupabase } = await import("../src/lib/supabase/server");
+    const { getServerSupabase } = await import("../app/lib/supabase-server");
     const sb = getServerSupabase();
     const { data } = await sb.from("ai_recommendations")
       .select("*").eq("site_id", "site-demo").eq("approval_status", "pending")

@@ -202,4 +202,78 @@ Each entry: ISO-date · decision · reason · affects.
           Path-3 (cherry-pick ISA-101/Golden-Flow features onto RC-2).
   Affects: blocks G4 deploy decision.
 
+══════════════════════════════════════════════════════════════════════
+ THIRD SPRINT — Path-3 integration: unify compliance (RC-2) + ops (mine)
+══════════════════════════════════════════════════════════════════════
+
+2026-05-23 · المسار 3: توحيد طبقتي التشغيل (فرعي) + الامتثال (RC-2)
+            في نظام واحد. RC-2=جلسة Web موازية لي.
+  Reason: schemas are complementary (zero table-name overlap), so
+          Path-3 (cherry-pick onto main) is cheaper than Path-1
+          (rebuild from scratch) while preserving every line of
+          RC-2's compliance work + every line of mine.
+  Affects: new branch integration/unified-smartos off origin/main.
+
+2026-05-23 · /operations route prefix (NOT replacing /)
+  Reason: RC-2's / (compliance demo, 3,858 lines, live on
+          demo.igarden.sa) stays untouched. My HMI mounts under
+          /operations/*. Zero collision; existing visitor experience
+          preserved. Ali's call.
+  Affects: routing.
+
+2026-05-23 · Tailwind v4 ADDED to RC-2's plain-CSS stack
+  Reason: 24 HMI components use Tailwind utility classes. RC-2 uses
+          inline styles + plain globals.css. Tailwind = additive
+          (utility class scope is opt-in via className), so it
+          coexists without touching RC-2's existing visuals.
+          ISA-101 design tokens live in @theme block of app/globals.css.
+  Affects: app/globals.css, postcss.config.mjs, package.json.
+
+2026-05-23 · File rename to avoid clash with RC-2's app/lib/supabase.ts
+  Reason: RC-2 has a fetch()-based PostgREST helper at app/lib/supabase.ts
+          for anon reads. I have an SDK-based service_role client. They
+          serve different patterns. Renamed mine to supabase-server.ts
+          (and supabase/client.ts → supabase-browser.ts) + types.ts →
+          smartos-types.ts. Both coexist as separate files.
+  Affects: app/lib/supabase-server.ts, supabase-browser.ts, smartos-types.ts.
+
+2026-05-23 · tsconfig: strict:false (RC-2's choice) — accepted, logged debt
+  Reason: my code is strict-mode written but RC-2's tsconfig is loose
+          (strict: false, noImplicitAny: false). Loose accepts strict
+          code; no immediate problem. Tech debt: TIGHTEN AFTER TAQADAM
+          when there's time to fix RC-2's any-typed surfaces.
+  Affects: tsconfig.json.
+
+2026-05-23 · Auth gate via DemoAuthProvider on /operations/layout.tsx
+  Reason: RC-2 gates / via DemoAuthProvider inside app/page.tsx.
+          /operations needs the same gate. Wrapping in
+          app/operations/layout.tsx keeps RC-2's pattern intact while
+          extending it to my HMI. Auth state shared via localStorage
+          key — one login unlocks both surfaces.
+  Affects: app/operations/layout.tsx.
+
+2026-05-23 · Live Operations CTA injected into RC-2 header (additive only)
+  Reason: TAQADAM presenter story flows /compliance → /operations/demo.
+          Added a lime button in the existing header flex container,
+          between live-pulse and language toggle. No structural
+          changes to RC-2's UI. Mirror back-link in NavSidebar.
+  Affects: app/page.tsx (one Edit insertion), app/components/NavSidebar.tsx.
+
+2026-05-23 · Migrations renamed with later timestamps (no DB collision)
+  Reason: my 3 smartos migrations stamped 20260523* — they apply AFTER
+          RC-2's 20260507/20260508 series. CREATE TYPE clauses won't
+          fire twice because the live Supabase project (mine,
+          ewcmosjxbqtzmkzakojn) already had them; a fresh project
+          would apply all 11 cleanly.
+  Affects: supabase/migrations/20260523000001..3_smartos_operational_*.sql.
+
+2026-05-23 · Live DB unchanged in this sprint
+  Reason: my Supabase project already has 12 operational tables +
+          60,488 seeded readings from previous sprints. RC-2's
+          compliance schema is NOT applied to my project (don't know
+          which Supabase project main is wired to in prod; risk of
+          shadowing). When Ali wires env vars at G4, decide then.
+  Affects: deferred to G4.
+
+
 

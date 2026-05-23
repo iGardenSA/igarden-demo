@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
 const rpcResult = { data: null, error: null as null | { message: string } };
 
-vi.mock("@/lib/supabase/server", () => ({
+vi.mock("@/lib/supabase-server", () => ({
   getServerSupabase: () => ({
     rpc: (fn: string, args: Record<string, unknown>) => {
       rpcCalls.push({ fn, args });
@@ -17,7 +17,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { issueCommand, CommandSafetyError } from "../src/lib/queries";
+import { issueCommand, CommandSafetyError } from "../app/lib/queries";
 
 beforeEach(() => {
   rpcCalls.length = 0;
