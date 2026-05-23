@@ -1,4 +1,4 @@
-import type { Site } from "@/lib/types";
+import type { Site } from "@/lib/smartos-types";
 import { Activity } from "lucide-react";
 
 /**

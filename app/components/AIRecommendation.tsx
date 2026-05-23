@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { cn } from "@/lib/cn";
-import type { AIRecommendation, ConfidenceLabel } from "@/lib/types";
+import type { AIRecommendation, ConfidenceLabel } from "@/lib/smartos-types";
 import { Brain, Check, Edit3, X, ShieldAlert } from "lucide-react";
 
 const CONF_LABEL: Record<ConfidenceLabel, string> = { low: "ثقة منخفضة", medium: "ثقة متوسطة", high: "ثقة عالية" };

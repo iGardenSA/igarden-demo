@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import type { SourceType } from "@/lib/types";
+import type { SourceType } from "@/lib/smartos-types";
 import { Radio, FlaskConical, Hand, Unplug } from "lucide-react";
 import { fmtAgo } from "@/lib/format";
 

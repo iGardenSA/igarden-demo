@@ -1,4 +1,4 @@
-import type { CoolingWaterLog } from "@/lib/types";
+import type { CoolingWaterLog } from "@/lib/smartos-types";
 import { fmtNumber, fmtDay } from "@/lib/format";
 import { Snowflake, Sprout, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";

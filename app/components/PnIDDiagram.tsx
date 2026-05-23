@@ -1,4 +1,4 @@
-import type { Reading } from "@/lib/types";
+import type { Reading } from "@/lib/smartos-types";
 import { cn } from "@/lib/cn";
 
 /**

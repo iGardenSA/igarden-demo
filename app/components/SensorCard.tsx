@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { fmtAgo, fmtNumber, isStale } from "@/lib/format";
-import type { Reading, Sensor, Device } from "@/lib/types";
+import type { Reading, Sensor, Device } from "@/lib/smartos-types";
 import { SourceBadge } from "./SourceBadge";
 import { SensorTrend } from "./SensorTrend";
 import { AlertTriangle } from "lucide-react";

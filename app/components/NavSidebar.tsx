@@ -1,24 +1,23 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Activity, AlertTriangle, BookOpen, Brain, FileBarChart, Gauge, Home, Layers, Sparkles } from "lucide-react";
+import { Activity, AlertTriangle, BookOpen, Brain, FileBarChart, Home, Sparkles, ArrowRight } from "lucide-react";
 
 const NAV = [
-  { href: "/",        label: "نظرة عامة",       icon: Home },
-  { href: "/alerts",  label: "التنبيهات",       icon: AlertTriangle },
-  { href: "/logs",    label: "سجل العمليات",    icon: BookOpen },
-  { href: "/reports", label: "التقارير والامتثال", icon: FileBarChart },
-  { href: "/ai",      label: "مساعد الذكاء",     icon: Brain },
-  { href: "/demo",    label: "وضع المستثمر",     icon: Sparkles },
+  { href: "/operations",         label: "نظرة عامة",        icon: Home },
+  { href: "/operations/alerts",  label: "التنبيهات",        icon: AlertTriangle },
+  { href: "/operations/logs",    label: "سجل العمليات",     icon: BookOpen },
+  { href: "/operations/reports", label: "التقارير والامتثال", icon: FileBarChart },
+  { href: "/operations/ai",      label: "مساعد الذكاء",      icon: Brain },
+  { href: "/operations/demo",    label: "وضع المستثمر",      icon: Sparkles },
 ];
 
 export function NavSidebar({ sites }: { sites: { id: string; name: string; status: string }[] }) {
   return (
     <aside className="iso-panel-flat bg-white border-l border-[color:var(--color-iso-border)] w-60 shrink-0 h-screen sticky top-0 hidden md:flex flex-col" dir="rtl">
       <div className="p-4 border-b border-[color:var(--color-iso-border)] flex items-center gap-2">
-        <Image src="/logo.png" alt="iGarden" width={28} height={28} />
+        <Activity className="size-7 text-[color:var(--color-lime)]" aria-hidden />
         <div>
           <div className="text-sm font-bold text-[color:var(--color-deep-green)]">iGarden Smart OS</div>
-          <div className="text-[10px] text-[color:var(--color-iso-ink-muted)] tracking-wide">طبقة التشغيل · ديمو</div>
+          <div className="text-[10px] text-[color:var(--color-iso-ink-muted)] tracking-wide">/operations · ديمو</div>
         </div>
       </div>
 
@@ -40,7 +39,7 @@ export function NavSidebar({ sites }: { sites: { id: string; name: string; statu
         {sites.map((s) => (
           <Link
             key={s.id}
-            href={`/site/${s.id}`}
+            href={`/operations/site/${s.id}`}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs hover:bg-[color:var(--color-iso-panel-alt)]"
           >
             <span className={`size-1.5 rounded-full ${s.status === "online" ? "bg-[color:var(--color-status-ok)]" : "bg-[color:var(--color-status-med)]"}`} aria-hidden />
@@ -49,8 +48,17 @@ export function NavSidebar({ sites }: { sites: { id: string; name: string; statu
         ))}
       </div>
 
-      <div className="mt-auto p-3 border-t border-[color:var(--color-iso-border)] text-[10px] text-[color:var(--color-iso-ink-muted)] leading-relaxed">
-        نسخة ديمو · بيانات بعضها محاكاة · تتطلب اعتماد بشري لكل أمر تحكّم.
+      {/* Back to RC-2 compliance landing */}
+      <Link
+        href="/"
+        className="mt-auto p-3 border-t border-[color:var(--color-iso-border)] text-xs text-[color:var(--color-iso-ink-soft)] hover:bg-[color:var(--color-iso-panel-alt)] flex items-center gap-2"
+      >
+        <ArrowRight className="size-3.5" aria-hidden />
+        العودة لـ Compliance Demo
+      </Link>
+
+      <div className="px-3 py-2 border-t border-[color:var(--color-iso-border)] text-[10px] text-[color:var(--color-iso-ink-muted)] leading-relaxed">
+        نسخة ديمو · كل البيانات محاكاة · تتطلب اعتماد بشري لكل أمر تحكّم.
       </div>
     </aside>
   );

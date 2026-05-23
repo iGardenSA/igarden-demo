@@ -1,6 +1,6 @@
-import type { Role } from "@/lib/types";
+import type { Role } from "@/lib/smartos-types";
 import { Shield, ShieldAlert, ShieldCheck, Hand } from "lucide-react";
-import { ROLE_LABELS_AR } from "@/lib/types";
+import { ROLE_LABELS_AR } from "@/lib/smartos-types";
 
 /**
  * Brief §4 Phase 3.6 — visible safety panel.

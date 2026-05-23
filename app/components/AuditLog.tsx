@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { fmtDateTime } from "@/lib/format";
-import type { ControlEvent, Command } from "@/lib/types";
+import type { ControlEvent, Command } from "@/lib/smartos-types";
 import { Download, Filter } from "lucide-react";
 
 /**

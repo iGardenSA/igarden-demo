@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ROLE_LABELS_AR, type Role } from "@/lib/types";
+import { ROLE_LABELS_AR, type Role } from "@/lib/smartos-types";
 import { User, Briefcase, LineChart } from "lucide-react";
 
 const ICON: Record<Role, React.ComponentType<{ className?: string }>> = {

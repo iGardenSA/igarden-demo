@@ -1,4 +1,4 @@
-import type { ROTelemetryRow } from "@/lib/types";
+import type { ROTelemetryRow } from "@/lib/smartos-types";
 import { Droplet, Activity } from "lucide-react";
 import { fmtNumber, fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/cn";

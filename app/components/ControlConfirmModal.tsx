@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { ShieldCheck, ShieldAlert, Lock, X } from "lucide-react";
-import type { Command, CommandType, Device } from "@/lib/types";
+import type { Command, CommandType, Device } from "@/lib/smartos-types";
 
 /**
  * Brief §5 ControlConfirmModal — must show all 5 elements:

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import type { Severity } from "@/lib/types";
+import type { Severity } from "@/lib/smartos-types";
 
 const STYLE: Record<Severity, string> = {
   p1: "bg-[color:var(--color-status-high)]/10 text-[color:var(--color-status-high)] border-[color:var(--color-status-high)]/30",

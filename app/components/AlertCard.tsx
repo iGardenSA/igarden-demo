@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 import { fmtAgo, fmtNumber, fmtDateTime } from "@/lib/format";
-import type { Alert, Sensor } from "@/lib/types";
+import type { Alert, Sensor } from "@/lib/smartos-types";
 import { AlertSeverity } from "./AlertSeverity";
 
 /**

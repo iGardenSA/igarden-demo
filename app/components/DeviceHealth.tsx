@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 import { fmtAgo, fmtDateTime } from "@/lib/format";
-import type { Device } from "@/lib/types";
+import type { Device } from "@/lib/smartos-types";
 import { Signal, SignalLow, SignalMedium, SignalHigh, SignalZero, Wrench } from "lucide-react";
 
 /**

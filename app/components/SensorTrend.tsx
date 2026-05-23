@@ -1,6 +1,6 @@
 "use client";
 
-import type { Reading } from "@/lib/types";
+import type { Reading } from "@/lib/smartos-types";
 import { useMemo } from "react";
 
 /**

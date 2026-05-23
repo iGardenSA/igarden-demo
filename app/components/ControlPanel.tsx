@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pause, Play, Power, RotateCcw, Settings } from "lucide-react";
-import type { Device, Command, CommandType } from "@/lib/types";
+import type { Device, Command, CommandType } from "@/lib/smartos-types";
 import { DeviceHealth } from "./DeviceHealth";
 import { ControlConfirmModal } from "./ControlConfirmModal";
 import { issueCommandAction } from "@/lib/actions";
